@@ -20,7 +20,7 @@ where
         let size = self
             .iter()
             .map(SerializedSize::serialized_size)
-            .fold(0, |sum, i| sum + i);
+            .sum::<usize>();
 
         size
     }
@@ -167,7 +167,7 @@ impl BinarySerialize for bool {
 impl BinarySerialize for i8 {
     #[inline(always)]
     fn binary_serialize<W: Write, E: ByteOrder>(&self, buffer: &mut W) -> usize {
-        buffer.write_i8(*self as i8).unwrap();
+        buffer.write_i8(*self).unwrap();
         std::mem::size_of::<i8>()
     }
 }
@@ -175,7 +175,7 @@ impl BinarySerialize for i8 {
 impl BinarySerialize for u8 {
     #[inline(always)]
     fn binary_serialize<W: Write, E: ByteOrder>(&self, buffer: &mut W) -> usize {
-        buffer.write_u8(*self as u8).unwrap();
+        buffer.write_u8(*self).unwrap();
         std::mem::size_of::<u8>()
     }
 }
@@ -183,7 +183,7 @@ impl BinarySerialize for u8 {
 impl BinarySerialize for [u8] {
     #[inline(always)]
     fn binary_serialize<W: Write, E: ByteOrder>(&self, buffer: &mut W) -> usize {
-        buffer.write(&self).unwrap()
+        buffer.write(self).unwrap()
     }
 }
 

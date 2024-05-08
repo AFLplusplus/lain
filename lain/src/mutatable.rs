@@ -54,7 +54,7 @@ fn grow_vec<T: NewFuzzed + SerializedSize, R: Rng>(
     };
 
     // If we were given a size constraint, we need to respect it
-    if let Some(max_size) = max_size.clone() {
+    if let Some(max_size) = max_size {
         num_elements = min(num_elements, max_size / T::max_default_object_size());
     }
 
@@ -327,7 +327,7 @@ where
         });
 
         // Check if we can even mutate this item
-        if let Some(max_size) = constraints.as_ref().map(|c| c.max_size).flatten().clone() {
+        if let Some(max_size) = constraints.as_ref().and_then(|c| c.max_size) {
             if T::min_nonzero_elements_size() < max_size || T::max_default_object_size() > max_size
             {
                 return;
@@ -367,7 +367,7 @@ where
         });
 
         // Check if we can even mutate this item
-        if let Some(max_size) = constraints.as_ref().map(|c| c.max_size).flatten().clone() {
+        if let Some(max_size) = constraints.as_ref().and_then(|c| c.max_size) {
             if T::min_nonzero_elements_size() < max_size {
                 return;
             }

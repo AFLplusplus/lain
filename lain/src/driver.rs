@@ -99,7 +99,7 @@ impl<T: 'static + Send + Sync> FuzzerDriver<T> {
     }
 
     pub fn global_context(&self) -> Option<Arc<RwLock<T>>> {
-        self.global_context.as_ref().map(|c| Arc::clone(c))
+        self.global_context.as_ref().map(Arc::clone)
     }
 
     /// Sets the root seed
@@ -243,8 +243,7 @@ pub fn start_fuzzer<F: 'static, C: 'static, T: 'static + Send + Sync>(
 
                     mutator.random_flags();
 
-                    if let Err(_) =
-                        (callback)(&mut mutator, &mut context, thread_driver.global_context())
+                    if (callback)(&mut mutator, &mut context, thread_driver.global_context()).is_err()
                     {
                         thread_driver
                             .num_failed_iterations

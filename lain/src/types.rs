@@ -81,7 +81,7 @@ pub struct Utf8String {
 impl Utf8String {
     pub fn new(s: &str) -> Self {
         Utf8String {
-            inner: s.chars().map(|c| Utf8Char(c)).collect(),
+            inner: s.chars().map(Utf8Char).collect(),
         }
     }
 }
@@ -95,7 +95,7 @@ pub struct AsciiString {
 impl AsciiString {
     pub fn new(s: &str) -> Self {
         AsciiString {
-            inner: s.chars().map(|c| AsciiChar(c)).collect(),
+            inner: s.chars().map(AsciiChar).collect(),
         }
     }
 }
@@ -134,29 +134,29 @@ impl<T: Bounded + Debug> Constraints<T> {
         }
     }
 
-    pub fn min<'a>(&'a mut self, min: T) -> &'a mut Constraints<T> {
+    pub fn min(&mut self, min: T) -> &mut Constraints<T> {
         self.min = Some(min);
         self
     }
 
-    pub fn max<'a>(&'a mut self, max: T) -> &'a mut Constraints<T> {
+    pub fn max(&mut self, max: T) -> &mut Constraints<T> {
         self.max = Some(max);
         self
     }
 
-    pub fn weighted<'a>(&'a mut self, weighted: Weighted) -> &'a mut Constraints<T> {
+    pub fn weighted(&mut self, weighted: Weighted) -> &mut Constraints<T> {
         self.weighted = weighted;
         self
     }
 
-    pub fn max_size<'a>(&'a mut self, max_size: usize) -> &'a mut Constraints<T> {
+    pub fn max_size(&mut self, max_size: usize) -> &mut Constraints<T> {
         self.max_size = Some(max_size);
         self
     }
 
-    pub fn account_for_base_object_size<'a, U: crate::traits::SerializedSize>(
-        &'a mut self,
-    ) -> &'a mut Constraints<T> {
+    pub fn account_for_base_object_size<U: crate::traits::SerializedSize>(
+        &mut self,
+    ) -> &mut Constraints<T> {
         if !self.base_object_size_accounted_for {
             if let Some(ref mut max_size) = self.max_size {
                 if U::max_default_object_size() > *max_size {
@@ -172,7 +172,7 @@ impl<T: Bounded + Debug> Constraints<T> {
         self
     }
 
-    pub fn set_base_size_accounted_for<'a>(&'a mut self) -> &'a mut Constraints<T> {
+    pub fn set_base_size_accounted_for(&mut self) -> &mut Constraints<T> {
         self.base_object_size_accounted_for = true;
         self
     }
@@ -180,14 +180,11 @@ impl<T: Bounded + Debug> Constraints<T> {
 
 /// Which direction to weigh ranges towards (min bound, upper bound, or none).
 #[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Default)]
 pub enum Weighted {
+    #[default]
     None,
     Min,
     Max,
 }
 
-impl Default for Weighted {
-    fn default() -> Self {
-        Weighted::None
-    }
-}

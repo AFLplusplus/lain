@@ -139,7 +139,7 @@ fn serialized_size_body(
     size: Option<usize>,
     min_size: Option<usize>,
 ) -> SerializedSizeBodies {
-    if let Some(size) = size.clone() {
+    if let Some(size) = size {
         let size_tokens = quote! {#size};
 
         return SerializedSizeBodies {
@@ -243,15 +243,15 @@ fn field_serializer(
         let bit_shift = field.attrs.bit_shift().unwrap();
         let is_last_field = field.attrs.is_last_field();
 
-        let bitfield_type = field.attrs.bitfield_type().unwrap_or(&field.ty);
+        let bitfield_type = field.attrs.bitfield_type().unwrap_or(field.ty);
 
         let type_total_bits = if is_primitive_type(bitfield_type, "u8") {
             8
-        } else if is_primitive_type(&bitfield_type, "u16") {
+        } else if is_primitive_type(bitfield_type, "u16") {
             16
-        } else if is_primitive_type(&bitfield_type, "u32") {
+        } else if is_primitive_type(bitfield_type, "u32") {
             32
-        } else if is_primitive_type(&bitfield_type, "u64") {
+        } else if is_primitive_type(bitfield_type, "u64") {
             64
         } else {
             panic!("got to field_serialize with an unsupported bitfield type `{}`. ensure that checks in ast code are correct", bitfield_type.into_token_stream());
@@ -272,16 +272,14 @@ fn field_serializer(
         }
 
         bitfield_setter
+    } else if let syn::Type::Array(ref _a) = ty {
+        // TODO: Change this once const generics are stabilized
+        quote_spanned! { field.original.span() =>
+            bytes_written += #value_ident.binary_serialize::<_, #endian>(buffer);
+        }
     } else {
-        if let syn::Type::Array(ref _a) = ty {
-            // TODO: Change this once const generics are stabilized
-            quote_spanned! { field.original.span() =>
-                bytes_written += #value_ident.binary_serialize::<_, #endian>(buffer);
-            }
-        } else {
-            quote_spanned! { field.original.span() =>
-                bytes_written += <#ty>::binary_serialize::<_, #endian>(#borrow#value_ident, buffer);
-            }
+        quote_spanned! { field.original.span() =>
+            bytes_written += <#ty>::binary_serialize::<_, #endian>(#borrow#value_ident, buffer);
         }
     };
 
@@ -460,16 +458,16 @@ fn field_serialized_size(
 
     let serialized_size_stmts = if let Some(bits) = field.attrs.bits() {
         let bit_shift = field.attrs.bit_shift().unwrap();
-        let bitfield_type = field.attrs.bitfield_type().unwrap_or(&field.ty);
+        let bitfield_type = field.attrs.bitfield_type().unwrap_or(field.ty);
         let is_last_field = field.attrs.is_last_field();
 
         let type_total_bits = if is_primitive_type(bitfield_type, "u8") {
             8
-        } else if is_primitive_type(&bitfield_type, "u16") {
+        } else if is_primitive_type(bitfield_type, "u16") {
             16
-        } else if is_primitive_type(&bitfield_type, "u32") {
+        } else if is_primitive_type(bitfield_type, "u32") {
             32
-        } else if is_primitive_type(&bitfield_type, "u64") {
+        } else if is_primitive_type(bitfield_type, "u64") {
             64
         } else {
             panic!("got to field_serialize_size with an unsupported bitfield type `{}`. ensure that checks in ast code are correct", bitfield_type.into_token_stream());

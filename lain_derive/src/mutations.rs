@@ -477,10 +477,8 @@ fn new_fuzzed_struct_visitor(fields: &[Field], cont_ident: &syn::Ident) -> Vec<T
 
 fn struct_field_constraints(field: &Field, for_mutation: bool) -> TokenStream {
     let attrs = &field.attrs;
-    if !for_mutation {
-        if attrs.ignore() || (attrs.initializer().is_some() && !attrs.ignore_chance().is_some()) {
-            return TokenStream::new();
-        }
+    if !for_mutation && (attrs.ignore() || (attrs.initializer().is_some() && attrs.ignore_chance().is_none())) {
+        return TokenStream::new();
     }
 
     if attrs.min().is_some() || attrs.max().is_some() || attrs.bits().is_some() {
@@ -571,7 +569,7 @@ fn field_initializer(
         }
     };
 
-    let inc_max_size = decrement_max_size(&field, &value_ident);
+    let inc_max_size = decrement_max_size(field, &value_ident);
     let initializer = quote! {
         #default_constraints
 
@@ -682,7 +680,7 @@ fn field_mutator(
         }
     };
 
-    let inc_max_size = mutatable_decrement_max_size(&field, &value_ident);
+    let inc_max_size = mutatable_decrement_max_size(field, &value_ident);
 
     let initializer = quote! {
         #default_constraints

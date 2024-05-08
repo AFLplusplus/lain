@@ -72,7 +72,7 @@ where
 
         // if no min/max were supplied, we'll take a conservative approach of 64 elements
         match constraints {
-            Some(ref constraints) => {
+            Some(constraints) => {
                 min = constraints.min.unwrap_or(0);
                 max = constraints.max.unwrap_or(MAX_NUM_ELEMENTS);
 
@@ -127,7 +127,7 @@ where
                 T::new_fuzzed(
                     mutator,
                     Some(
-                        &Constraints::new()
+                        Constraints::new()
                             .max_size(max_size - used_size)
                             .set_base_size_accounted_for(),
                     ),
@@ -239,7 +239,7 @@ where
                 T::new_fuzzed(
                     mutator,
                     Some(
-                        &Constraints::new()
+                        Constraints::new()
                             .max_size(max_size - used_size)
                             .set_base_size_accounted_for(),
                     ),
@@ -267,7 +267,7 @@ where
                     T::new_fuzzed(
                         mutator,
                         Some(
-                            &Constraints::new()
+                            Constraints::new()
                                 .max_size(max_size - used_size)
                                 .set_base_size_accounted_for(),
                         ),
@@ -380,7 +380,7 @@ impl NewFuzzed for Utf8String {
 
         // if no min/max were supplied, we'll take a conservative approach
         match constraints {
-            Some(ref constraints) => {
+            Some(constraints) => {
                 min = constraints.min.unwrap_or(0);
                 max = constraints.max.unwrap_or(256);
                 weight = constraints.weighted;
@@ -444,7 +444,7 @@ impl NewFuzzed for AsciiString {
 
         // if no min/max were supplied, we'll take a conservative approach
         match constraints {
-            Some(ref constraints) => {
+            Some(constraints) => {
                 min = constraints.min.unwrap_or(0);
                 max = constraints.max.unwrap_or(256);
                 weight = constraints.weighted;
@@ -617,7 +617,7 @@ impl NewFuzzed for AsciiChar {
 
         // if no min/max were supplied, we'll take a conservative approach of 64 elements
         match constraints {
-            Some(ref constraints) => {
+            Some(constraints) => {
                 min = constraints.min.unwrap_or(0);
                 max = constraints.max.unwrap_or(0x80);
                 weight = constraints.weighted;

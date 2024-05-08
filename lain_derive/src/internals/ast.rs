@@ -138,7 +138,7 @@ fn fields_from_ast<'a>(cx: &Ctxt, fields: &'a Punctuated<syn::Field, Token![,]>)
 
             let bits_in_type: usize;
 
-            let bitfield_type = field.attrs.bitfield_type().unwrap_or(&field.ty);
+            let bitfield_type = field.attrs.bitfield_type().unwrap_or(field.ty);
             if is_primitive_type(bitfield_type, "u8") {
                 bits_in_type = 8
             } else if is_primitive_type(bitfield_type, "u16") {
@@ -148,14 +148,14 @@ fn fields_from_ast<'a>(cx: &Ctxt, fields: &'a Punctuated<syn::Field, Token![,]>)
             } else if is_primitive_type(bitfield_type, "u64") {
                 bits_in_type = 64
             } else {
-                cx.error_spanned_by(&field.ty, "Unsupported bitfield datatype. Did you forget to specify `#[lain(bitfield_type = \"...\")]`?");
+                cx.error_spanned_by(field.ty, "Unsupported bitfield datatype. Did you forget to specify `#[lain(bitfield_type = \"...\")]`?");
                 return field;
             }
 
             if bitfield_bits == bits_in_type {
                 bitfield_bits = 0;
             } else if bitfield_bits > bits_in_type {
-                cx.error_spanned_by(&field.ty, "Number of bits specified overflows bitfield type");
+                cx.error_spanned_by(field.ty, "Number of bits specified overflows bitfield type");
             }
         }
 
@@ -163,7 +163,7 @@ fn fields_from_ast<'a>(cx: &Ctxt, fields: &'a Punctuated<syn::Field, Token![,]>)
     })
     .collect();
 
-    if fields.len() == 0 {
+    if fields.is_empty() {
         return fields;
     }
 

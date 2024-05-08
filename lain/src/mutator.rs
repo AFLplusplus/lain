@@ -38,15 +38,11 @@ struct MutatorFlags {
 /// Represents the state of the current corpus item being fuzzed.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[derive(Default)]
 pub struct CorpusFuzzingState {
     fields_fuzzed: usize,
 }
 
-impl Default for CorpusFuzzingState {
-    fn default() -> Self {
-        CorpusFuzzingState { fields_fuzzed: 0 }
-    }
-}
 
 impl CorpusFuzzingState {
     pub fn reset(&mut self) {
@@ -104,7 +100,7 @@ impl<R: Rng> Mutator<R> {
             + std::fmt::Debug,
     {
         // dirty but needs to be done so we can call self.gen_chance_ignore_flags
-        if let Some(count) = self.flags.field_count.clone() {
+        if let Some(count) = self.flags.field_count {
             if self.corpus_state.fields_fuzzed == count {
                 return;
             }
@@ -258,9 +254,9 @@ impl<R: Rng> Mutator<R> {
         let zero = B1::from(0u8).unwrap();
 
         let mut slices = [
-            ((zero.clone(), zero.clone()), 0u8),
-            ((zero.clone(), zero.clone()), 0u8),
-            ((zero.clone(), zero.clone()), 0u8),
+            ((zero, zero), 0u8),
+            ((zero, zero), 0u8),
+            ((zero, zero), 0u8),
         ];
 
         for i in 0..3 {
@@ -307,7 +303,6 @@ impl<R: Rng> Mutator<R> {
     pub fn should_early_bail_mutation(&self) -> bool {
         self.flags
             .field_count
-            .clone()
             .map(|count| count >= self.corpus_state.fields_fuzzed)
             .unwrap_or(false)
     }

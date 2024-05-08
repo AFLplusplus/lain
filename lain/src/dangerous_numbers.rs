@@ -1,14 +1,14 @@
 use crate::rand::Rng;
 use crate::traits::*;
 
-static DANGEROUS_NUMBERS_U8: &'static [u8] = &[
+static DANGEROUS_NUMBERS_U8: &[u8] = &[
     std::u8::MIN,             // 0x00
     std::u8::MAX,             // 0xff
     std::i8::MAX as u8,       // 0x7f
     (std::i8::MAX as u8) + 1, // 0x80
 ];
 
-static DANGEROUS_NUMBERS_U16: &'static [u16] = &[
+static DANGEROUS_NUMBERS_U16: &[u16] = &[
     // big-endian variants
     std::u16::MIN,              // 0x0000
     std::u16::MAX,              // 0xffff
@@ -19,7 +19,7 @@ static DANGEROUS_NUMBERS_U16: &'static [u16] = &[
     0x0080,
 ];
 
-static DANGEROUS_NUMBERS_U32: &'static [u32] = &[
+static DANGEROUS_NUMBERS_U32: &[u32] = &[
     // big-endian variants
     std::u32::MIN,
     std::u32::MAX,
@@ -30,7 +30,7 @@ static DANGEROUS_NUMBERS_U32: &'static [u32] = &[
     0x0000_0080,
 ];
 
-static DANGEROUS_NUMBERS_U64: &'static [u64] = &[
+static DANGEROUS_NUMBERS_U64: &[u64] = &[
     // big-endian variants
     std::u64::MIN,
     std::u64::MAX,
@@ -41,7 +41,7 @@ static DANGEROUS_NUMBERS_U64: &'static [u64] = &[
     0x0000_0000_0000_0080,
 ];
 
-static DANGEROUS_NUMBERS_F32: &'static [f32] = &[
+static DANGEROUS_NUMBERS_F32: &[f32] = &[
     std::f32::INFINITY,
     std::f32::MAX,
     std::f32::MIN,
@@ -50,7 +50,7 @@ static DANGEROUS_NUMBERS_F32: &'static [f32] = &[
     std::f32::NEG_INFINITY,
 ];
 
-static DANGEROUS_NUMBERS_F64: &'static [f64] = &[
+static DANGEROUS_NUMBERS_F64: &[f64] = &[
     std::f64::INFINITY,
     std::f64::MAX,
     std::f64::MIN,

@@ -210,7 +210,7 @@ fn variable_size_object_helper(input: &DeriveInput) -> TokenStream {
         }
         Data::Struct(ref data) => {
             if let Fields::Named(ref fields) = data.fields {
-                if fields.named.len() == 0 {
+                if fields.named.is_empty() {
                     imp = quote! {false};
                 } else {
                     let mut tokens = quote! {false};
@@ -254,13 +254,11 @@ pub fn fuzzer_object(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let input = parse_macro_input!(input as DeriveInput);
     base_token_stream.extend::<TokenStream>(
         mutations::expand_new_fuzzed(&input)
-            .unwrap_or_else(to_compile_errors)
-            .into(),
+            .unwrap_or_else(to_compile_errors),
     );
     base_token_stream.extend::<TokenStream>(
         mutations::expand_mutatable(&input)
-            .unwrap_or_else(to_compile_errors)
-            .into(),
+            .unwrap_or_else(to_compile_errors),
     );
     base_token_stream.extend::<TokenStream>(variable_size_object_helper(&input));
 

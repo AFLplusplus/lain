@@ -22,8 +22,8 @@ pub struct Attr<'c, T> {
 impl<'c, T> Attr<'c, T> {
     fn none(cx: &'c Ctxt, name: Symbol) -> Self {
         Attr {
-            cx: cx,
-            name: name,
+            cx,
+            name,
             tokens: TokenStream::new(),
             value: None,
         }
@@ -117,11 +117,11 @@ impl Container {
     }
 
     pub fn serialized_size(&self) -> Option<usize> {
-        self.serialized_size.clone()
+        self.serialized_size
     }
 
     pub fn min_serialized_size(&self) -> Option<usize> {
-        self.min_serialized_size.clone()
+        self.min_serialized_size
     }
 
     pub fn lain_path(&self) -> Cow<syn::Path> {
@@ -208,7 +208,7 @@ impl Field {
                     }
                     // `#[lain(bitfield_type = "u8")]`
                     Meta(NameValue(ref m)) if m.ident == BITFIELD_TYPE => {
-                        if let Ok(expr) = parse_lit_into_type(&cx, BITFIELD_TYPE, &m.lit) {
+                        if let Ok(expr) = parse_lit_into_type(cx, BITFIELD_TYPE, &m.lit) {
                             bitfield_type.set(&m.ident, expr)
                         } else {
                             cx.error_spanned_by(
@@ -252,7 +252,7 @@ impl Field {
                     // `#[lain(ignore_chance = 99.0)]`
                     Meta(NameValue(ref m)) if m.ident == IGNORE_CHANCE => {
                         if let Float(ref f) = m.lit {
-                            ignore_chance.set(&m.ident, f.value() as f64);
+                            ignore_chance.set(&m.ident, f.value());
                         } else if let Int(ref i) = m.lit {
                             ignore_chance.set(&m.ident, i.value() as f64);
                         } else {
@@ -263,7 +263,7 @@ impl Field {
                         }
                     }
                     Meta(NameValue(ref m)) if m.ident == INITIALIZER => {
-                        if let Ok(ref s) = get_lit_str(cx, INITIALIZER, INITIALIZER, &m.lit) {
+                        if let Ok(s) = get_lit_str(cx, INITIALIZER, INITIALIZER, &m.lit) {
                             if let Ok(tokens) = TokenStream::from_str(&s.value()) {
                                 initializer.set(&m.ident, tokens);
                             } else {
@@ -321,15 +321,15 @@ impl Field {
     }
 
     pub fn is_last_field(&self) -> bool {
-        return self.is_last_field;
+        self.is_last_field
     }
 
     pub fn bits(&self) -> Option<usize> {
-        self.bits.clone()
+        self.bits
     }
 
     pub fn bit_shift(&self) -> Option<usize> {
-        self.bit_shift.clone()
+        self.bit_shift
     }
 
     pub fn set_bit_shift(&mut self, shift: usize) {
@@ -353,7 +353,7 @@ impl Field {
     }
 
     pub fn ignore_chance(&self) -> Option<f64> {
-        self.ignore_chance.clone()
+        self.ignore_chance
     }
 
     pub fn initializer(&self) -> Option<&TokenStream> {
@@ -408,7 +408,7 @@ impl Variant {
                     // `#[lain(ignore_chance = 99.0)]`
                     Meta(NameValue(ref m)) if m.ident == IGNORE_CHANCE => {
                         if let Float(ref f) = m.lit {
-                            ignore_chance.set(&m.ident, f.value() as f64);
+                            ignore_chance.set(&m.ident, f.value());
                         } else if let Int(ref i) = m.lit {
                             ignore_chance.set(&m.ident, i.value() as f64);
                         } else {
@@ -439,7 +439,7 @@ impl Variant {
     }
 
     pub fn weight(&self) -> Option<u64> {
-        self.weight.clone()
+        self.weight
     }
 
     pub fn ignore(&self) -> bool {
