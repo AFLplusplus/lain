@@ -243,7 +243,8 @@ pub fn start_fuzzer<F: 'static, C: 'static, T: 'static + Send + Sync>(
 
                     mutator.random_flags();
 
-                    if (callback)(&mut mutator, &mut context, thread_driver.global_context()).is_err()
+                    if (callback)(&mut mutator, &mut context, thread_driver.global_context())
+                        .is_err()
                     {
                         thread_driver
                             .num_failed_iterations

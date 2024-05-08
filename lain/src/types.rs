@@ -179,12 +179,10 @@ impl<T: Bounded + Debug> Constraints<T> {
 }
 
 /// Which direction to weigh ranges towards (min bound, upper bound, or none).
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub enum Weighted {
     #[default]
     None,
     Min,
     Max,
 }
-

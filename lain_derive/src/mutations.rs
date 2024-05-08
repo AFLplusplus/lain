@@ -477,7 +477,9 @@ fn new_fuzzed_struct_visitor(fields: &[Field], cont_ident: &syn::Ident) -> Vec<T
 
 fn struct_field_constraints(field: &Field, for_mutation: bool) -> TokenStream {
     let attrs = &field.attrs;
-    if !for_mutation && (attrs.ignore() || (attrs.initializer().is_some() && attrs.ignore_chance().is_none())) {
+    if !for_mutation
+        && (attrs.ignore() || (attrs.initializer().is_some() && attrs.ignore_chance().is_none()))
+    {
         return TokenStream::new();
     }
 

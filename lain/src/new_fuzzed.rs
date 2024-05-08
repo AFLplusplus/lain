@@ -704,13 +704,13 @@ macro_rules! impl_new_fuzzed {
 
                             min = if let Some(ref min) = constraints.min {
                                 if mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX) {
-                                    $name::min_value()
+                                    $name::MIN
                                 } else {
                                     ignore_min = false;
                                     *min
                                 }
                             } else {
-                                $name::min_value()
+                                $name::MIN
                             };
 
                             max = if let Some(ref max) = constraints.max {

@@ -43,7 +43,6 @@ pub struct CorpusFuzzingState {
     fields_fuzzed: usize,
 }
 
-
 impl CorpusFuzzingState {
     pub fn reset(&mut self) {
         self.fields_fuzzed = 0;

@@ -2,18 +2,18 @@ use crate::rand::Rng;
 use crate::traits::*;
 
 static DANGEROUS_NUMBERS_U8: &[u8] = &[
-    std::u8::MIN,             // 0x00
-    std::u8::MAX,             // 0xff
-    std::i8::MAX as u8,       // 0x7f
-    (std::i8::MAX as u8) + 1, // 0x80
+    u8::MIN,             // 0x00
+    u8::MAX,             // 0xff
+    i8::MAX as u8,       // 0x7f
+    (i8::MAX as u8) + 1, // 0x80
 ];
 
 static DANGEROUS_NUMBERS_U16: &[u16] = &[
     // big-endian variants
-    std::u16::MIN,              // 0x0000
-    std::u16::MAX,              // 0xffff
-    std::i16::MAX as u16,       // 0x7fff
-    (std::i16::MAX as u16) + 1, // 0x8000
+    u16::MIN,              // 0x0000
+    u16::MAX,              // 0xffff
+    i16::MAX as u16,       // 0x7fff
+    (i16::MAX as u16) + 1, // 0x8000
     // little-endian variants
     0xff7f,
     0x0080,
@@ -21,10 +21,10 @@ static DANGEROUS_NUMBERS_U16: &[u16] = &[
 
 static DANGEROUS_NUMBERS_U32: &[u32] = &[
     // big-endian variants
-    std::u32::MIN,
-    std::u32::MAX,
-    std::i32::MAX as u32,
-    (std::i32::MAX as u32) + 1,
+    u32::MIN,
+    u32::MAX,
+    i32::MAX as u32,
+    (i32::MAX as u32) + 1,
     // little-endian variants
     0xffff_ff7f,
     0x0000_0080,
@@ -32,31 +32,31 @@ static DANGEROUS_NUMBERS_U32: &[u32] = &[
 
 static DANGEROUS_NUMBERS_U64: &[u64] = &[
     // big-endian variants
-    std::u64::MIN,
-    std::u64::MAX,
-    std::i64::MAX as u64,
-    (std::i64::MAX as u64) + 1,
+    u64::MIN,
+    u64::MAX,
+    i64::MAX as u64,
+    (i64::MAX as u64) + 1,
     // little-endian variants
     0xffff_ffff_ffff_ff7f,
     0x0000_0000_0000_0080,
 ];
 
 static DANGEROUS_NUMBERS_F32: &[f32] = &[
-    std::f32::INFINITY,
-    std::f32::MAX,
-    std::f32::MIN,
-    std::f32::MIN_POSITIVE,
-    std::f32::NAN,
-    std::f32::NEG_INFINITY,
+    f32::INFINITY,
+    f32::MAX,
+    f32::MIN,
+    f32::MIN_POSITIVE,
+    f32::NAN,
+    f32::NEG_INFINITY,
 ];
 
 static DANGEROUS_NUMBERS_F64: &[f64] = &[
-    std::f64::INFINITY,
-    std::f64::MAX,
-    std::f64::MIN,
-    std::f64::MIN_POSITIVE,
-    std::f64::NAN,
-    std::f64::NEG_INFINITY,
+    f64::INFINITY,
+    f64::MAX,
+    f64::MIN,
+    f64::MIN_POSITIVE,
+    f64::NAN,
+    f64::NEG_INFINITY,
 ];
 
 macro_rules! dangerous_number {
