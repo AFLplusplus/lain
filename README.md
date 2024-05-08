@@ -1,18 +1,16 @@
 # lain
 
-This crate provides functionality one may find useful while developing a fuzzer. A recent
-nightly Rust build is required for the specialization feature.
+This project is a fork of the (seemingly unmaintained) [lain](https://github.com/landaire/lain), which
+itself is a fork of the (deprecated) [lain from Microsoft](https://github.com/microsoft/lain).
+
+This crate provides functionality one may find useful while developing a fuzzer. A recent nightly Rust
+build is required for the specialization feature.
 
 Please consider this crate in "beta" and subject to breaking changes for minor version releases for pre-1.0.
 
-[![crates.io](https://img.shields.io/crates/v/lain.svg)](https://crates.io/crates/lain)
-[![docs.rs](https://docs.rs/lain/badge.svg)](https://docs.rs/lain)
-
 ### Documentation
 
-Please refer to [the wiki](https://github.com/microsoft/lain/wiki) for a high-level overview.
-
-For API documentation: https://docs.rs/lain
+Please build the documentation locally with `cargo doc --open`.
 
 ### Installation
 
@@ -22,8 +20,10 @@ Add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-lain = "0.5"
+lain = { git = "https://github.com/AFLplusplus/lain.git" }
 ```
+
+You may wish to pin to a specific revision or tag.
 
 ### Example Usage
 
@@ -85,19 +85,6 @@ state.
 
 ## Contributing
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to
-a Contributor License Agreement (CLA) declaring that you have the right to, and actually do,
-grant us the rights to use your contribution. For details, visit https://cla.microsoft.com.
-
-When you submit a pull request, a CLA-bot will automatically determine whether you need to
-provide a CLA and decorate the PR appropriately (e.g., label, comment). Simply follow the
-instructions provided by the bot. You will only need to do this once across all repos using our
-CLA.
-
-This project has adopted the [Microsoft Open Source Code of
-Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of
-Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact
-[opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or
-comments.
+This project welcomes contributions and suggestions.
 
 License: MIT
