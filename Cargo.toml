@@ -4,3 +4,11 @@ members = [
 	'lain',
 	'lain_derive',
 ]
+
+[workspace.package]
+version = "0.5.6"          
+authors = ["Lain Devs", "AFLplusplus"]
+edition = "2018"
+homepage = "https://github.com/AFLplusplus/lain"
+keywords = ["lain", "fuzzer", "mutator", "mutate", "mutation"]
+license = "MIT"
