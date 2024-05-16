@@ -209,6 +209,7 @@ where
         constraints: Option<&Constraints<Self::RangeType>>,
     ) {
         const CHANCE_TO_RESIZE_VEC: f64 = 0.01;
+        const CHANCE_TO_RESIZE_EMPTY_VEC: f64 = 0.33;
 
         if T::max_default_object_size() == 0 {
             return;
@@ -224,29 +225,35 @@ where
             })
             .unwrap_or(false);
 
-        if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
-            let resize_type = VecResizeType::new_fuzzed(mutator, None);
-            if resize_type == VecResizeType::Grow && can_grow {
+        if self.is_empty() {
+            if mutator.gen_chance(CHANCE_TO_RESIZE_EMPTY_VEC) {
                 grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
-            } else {
-                shrink_vec(self, mutator);
             }
         } else {
-            // Recreate the constraints so that the min/max types match
-            let constraints = constraints.and_then(|c| {
-                if c.max_size.is_none() {
-                    None
+            if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
+                let resize_type = VecResizeType::new_fuzzed(mutator, None);
+                if resize_type == VecResizeType::Grow && can_grow {
+                    grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
                 } else {
-                    let mut new_constraints = Constraints::new();
-                    new_constraints.base_object_size_accounted_for =
-                        c.base_object_size_accounted_for;
-                    new_constraints.max_size = c.max_size;
-
-                    Some(new_constraints)
+                    shrink_vec(self, mutator);
                 }
-            });
+            } else {
+                // Recreate the constraints so that the min/max types match
+                let constraints = constraints.and_then(|c| {
+                    if c.max_size.is_none() {
+                        None
+                    } else {
+                        let mut new_constraints = Constraints::new();
+                        new_constraints.base_object_size_accounted_for =
+                            c.base_object_size_accounted_for;
+                        new_constraints.max_size = c.max_size;
 
-            self.as_mut_slice().mutate(mutator, constraints.as_ref());
+                        Some(new_constraints)
+                    }
+                });
+
+                self.as_mut_slice().mutate(mutator, constraints.as_ref());
+            }
         }
     }
 }
@@ -264,6 +271,7 @@ where
         constraints: Option<&Constraints<Self::RangeType>>,
     ) {
         const CHANCE_TO_RESIZE_VEC: f64 = 0.01;
+        const CHANCE_TO_RESIZE_EMPTY_VEC: f64 = 0.33;
 
         if T::max_default_object_size() == 0 {
             return;
@@ -275,29 +283,35 @@ where
             .map(|c| c.max_size.map(|s| s > 0).unwrap_or(true))
             .unwrap_or(false);
 
-        if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
-            let resize_type = VecResizeType::new_fuzzed(mutator, None);
-            if resize_type == VecResizeType::Grow && can_grow {
+        if self.is_empty() {
+            if mutator.gen_chance(CHANCE_TO_RESIZE_EMPTY_VEC) {
                 grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
-            } else {
-                shrink_vec(self, mutator);
             }
         } else {
-            // Recreate the constraints so that the min/max types match
-            let constraints = constraints.and_then(|c| {
-                if c.max_size.is_none() {
-                    None
+            if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
+                let resize_type = VecResizeType::new_fuzzed(mutator, None);
+                if resize_type == VecResizeType::Grow && can_grow {
+                    grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
                 } else {
-                    let mut new_constraints = Constraints::new();
-                    new_constraints.base_object_size_accounted_for =
-                        c.base_object_size_accounted_for;
-                    new_constraints.max_size = c.max_size;
-
-                    Some(new_constraints)
+                    shrink_vec(self, mutator);
                 }
-            });
+            } else {
+                // Recreate the constraints so that the min/max types match
+                let constraints = constraints.and_then(|c| {
+                    if c.max_size.is_none() {
+                        None
+                    } else {
+                        let mut new_constraints = Constraints::new();
+                        new_constraints.base_object_size_accounted_for =
+                            c.base_object_size_accounted_for;
+                        new_constraints.max_size = c.max_size;
 
-            self.as_mut_slice().mutate(mutator, constraints.as_ref());
+                        Some(new_constraints)
+                    }
+                });
+
+                self.as_mut_slice().mutate(mutator, constraints.as_ref());
+            }
         }
     }
 }
@@ -618,18 +632,19 @@ where
         mutator: &mut Mutator<R>,
         constraints: Option<&Constraints<Self::RangeType>>,
     ) {
-        const CHANCE_TO_FLIP_OPTION_STATE: f64 = 0.01;
+        const CHANCE_TO_FLIP_SOME_STATE: f64 = 0.05;
+        const CHANCE_TO_FLIP_NONE_STATE: f64 = 0.10;
         match self {
             Some(inner) => {
                 // small chance to make this None
-                if mutator.gen_chance(CHANCE_TO_FLIP_OPTION_STATE) {
+                if mutator.gen_chance(CHANCE_TO_FLIP_SOME_STATE) {
                     *self = None;
                 } else {
                     inner.mutate(mutator, constraints);
                 }
             }
             None => {
-                if mutator.gen_chance(CHANCE_TO_FLIP_OPTION_STATE) {
+                if mutator.gen_chance(CHANCE_TO_FLIP_NONE_STATE) {
                     let new_item = T::new_fuzzed(mutator, constraints);
 
                     *self = Some(new_item);
