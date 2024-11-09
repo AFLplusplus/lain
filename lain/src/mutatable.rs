@@ -38,17 +38,23 @@ enum VecResizeType {
 fn grow_vec<T: NewFuzzed + SerializedSize, R: Rng>(
     vec: &mut Vec<T>,
     mutator: &mut Mutator<R>,
+    max_elems: Option<usize>,
     mut max_size: Option<usize>,
 ) {
     let resize_count = VecResizeCount::new_fuzzed(mutator, None);
+    let resize_max = if let Some(max) = max_elems {
+        max
+    } else {
+        9 // old magic value from lain
+    };
     let mut num_elements = if vec.is_empty() {
-        mutator.gen_range(1, 9)
+        mutator.gen_range(1, resize_max)
     } else {
         match resize_count {
             VecResizeCount::Quarter => vec.len() / 4,
             VecResizeCount::Half => vec.len() / 2,
             VecResizeCount::ThreeQuarters => vec.len() - (vec.len() / 4),
-            VecResizeCount::FixedBytes => mutator.gen_range(1, 9),
+            VecResizeCount::FixedBytes => mutator.gen_range(1, resize_max),
             VecResizeCount::AllBytes => mutator.gen_range(1, vec.len() + 1),
         }
     };
@@ -56,6 +62,10 @@ fn grow_vec<T: NewFuzzed + SerializedSize, R: Rng>(
     // If we were given a size constraint, we need to respect it
     if let Some(max_size) = max_size {
         num_elements = min(num_elements, max_size / T::max_default_object_size());
+    }
+
+    if let Some(max_elems) = max_elems {
+        num_elements = min(max_elems - vec.len(), num_elements);
     }
 
     if num_elements == 0 {
@@ -125,28 +135,30 @@ fn grow_vec<T: NewFuzzed + SerializedSize, R: Rng>(
 /// Shrinks a `Vec`.
 /// This will randomly select to resize by a factor of 1/4, 1/2, 3/4, or a fixed number of bytes
 /// in the range of [1, 8]. Elements may be removed randomly from the beginning or end of the the vec
-fn shrink_vec<T, R: Rng>(vec: &mut Vec<T>, mutator: &mut Mutator<R>) {
+fn shrink_vec<T, R: Rng>(vec: &mut Vec<T>, mutator: &mut Mutator<R>, min_size: Option<usize>) {
     if vec.is_empty() {
         return;
     }
+
+    let min_size = if let Some(min) = min_size { min } else { 0 };
 
     let resize_count = VecResizeCount::new_fuzzed(mutator, None);
     let mut num_elements = match resize_count {
         VecResizeCount::Quarter => vec.len() / 4,
         VecResizeCount::Half => vec.len() / 2,
         VecResizeCount::ThreeQuarters => vec.len() - (vec.len() / 4),
-        VecResizeCount::FixedBytes => mutator.gen_range(1, 9),
-        VecResizeCount::AllBytes => vec.len(),
+        VecResizeCount::FixedBytes => min(min(mutator.gen_range(1, 9), vec.len()), min_size),
+        VecResizeCount::AllBytes => min(vec.len(), min_size),
     };
 
     if num_elements == 0 {
         num_elements = mutator.gen_range(0, vec.len() + 1);
     }
 
-    num_elements = std::cmp::min(num_elements, vec.len());
+    num_elements = std::cmp::min(num_elements, vec.len() - min_size);
 
     // Special case probably isn't required here, but better to be explicit
-    if num_elements == vec.len() {
+    if num_elements == vec.len() && min_size == 0 {
         vec.drain(..);
         return;
     }
@@ -177,7 +189,7 @@ where
 
         // 1% chance to resize this vec
         if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
-            shrink_vec(self, mutator);
+            shrink_vec(self, mutator, Some(1));
         } else {
             // Recreate the constraints so that the min/max types match
             let constraints = constraints.and_then(|c| {
@@ -217,25 +229,56 @@ where
 
         // we can grow the vector if we have no size constraint or the max size quota hasn't
         // been fulfilled
-        let can_grow = constraints
-            .map(|c| {
-                c.max_size
-                    .map(|s| s > 0 && s > T::max_default_object_size())
-                    .unwrap_or(true)
-            })
-            .unwrap_or(false);
+        let mut can_grow = true;
+        if let Some(max_elems) = constraints.and_then(|c| c.max) {
+            if self.len() >= max_elems {
+                can_grow = false;
+            }
+        }
+
+        if let Some(max_size) = constraints.and_then(|c| c.max_size) {
+            if self.len() >= max_size / T::max_default_object_size() {
+                can_grow = false;
+            }
+        }
 
         if self.is_empty() {
             if mutator.gen_chance(CHANCE_TO_RESIZE_EMPTY_VEC) {
-                grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
+                grow_vec(
+                    self,
+                    mutator,
+                    constraints.and_then(|c| c.max),
+                    constraints.and_then(|c| c.max_size),
+                );
+            } else {
+                // Recreate the constraints so that the min/max types match
+                let constraints = constraints.and_then(|c| {
+                    if c.max_size.is_none() {
+                        None
+                    } else {
+                        let mut new_constraints = Constraints::new();
+                        new_constraints.base_object_size_accounted_for =
+                            c.base_object_size_accounted_for;
+                        new_constraints.max_size = c.max_size;
+
+                        Some(new_constraints)
+                    }
+                });
+
+                self.as_mut_slice().mutate(mutator, constraints.as_ref());
             }
         } else {
             if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
                 let resize_type = VecResizeType::new_fuzzed(mutator, None);
                 if resize_type == VecResizeType::Grow && can_grow {
-                    grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
+                    grow_vec(
+                        self,
+                        mutator,
+                        constraints.and_then(|c| c.max),
+                        constraints.and_then(|c| c.max_size),
+                    );
                 } else {
-                    shrink_vec(self, mutator);
+                    shrink_vec(self, mutator, constraints.and_then(|c| c.min));
                 }
             } else {
                 // Recreate the constraints so that the min/max types match
@@ -285,15 +328,41 @@ where
 
         if self.is_empty() {
             if mutator.gen_chance(CHANCE_TO_RESIZE_EMPTY_VEC) {
-                grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
+                grow_vec(
+                    self,
+                    mutator,
+                    constraints.and_then(|c| c.max),
+                    constraints.and_then(|c| c.max_size),
+                );
+            } else {
+                // Recreate the constraints so that the min/max types match
+                let constraints = constraints.and_then(|c| {
+                    if c.max_size.is_none() {
+                        None
+                    } else {
+                        let mut new_constraints = Constraints::new();
+                        new_constraints.base_object_size_accounted_for =
+                            c.base_object_size_accounted_for;
+                        new_constraints.max_size = c.max_size;
+
+                        Some(new_constraints)
+                    }
+                });
+
+                self.as_mut_slice().mutate(mutator, constraints.as_ref());
             }
         } else {
             if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
                 let resize_type = VecResizeType::new_fuzzed(mutator, None);
                 if resize_type == VecResizeType::Grow && can_grow {
-                    grow_vec(self, mutator, constraints.and_then(|c| c.max_size));
+                    grow_vec(
+                        self,
+                        mutator,
+                        constraints.and_then(|c| c.max),
+                        constraints.and_then(|c| c.max_size),
+                    );
                 } else {
-                    shrink_vec(self, mutator);
+                    shrink_vec(self, mutator, constraints.and_then(|c| c.min));
                 }
             } else {
                 // Recreate the constraints so that the min/max types match

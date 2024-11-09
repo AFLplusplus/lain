@@ -16,8 +16,14 @@ use serde::{Deserialize, Serialize};
 
 // set these to 0 to disable
 pub const CHANCE_TO_REPEAT_ARRAY_VALUE: f64 = 0.05;
-pub const CHANCE_TO_PICK_INVALID_ENUM: f64 = 0.10;
-pub const CHANCE_TO_IGNORE_MIN_MAX: f64 = 0.05;
+#[cfg(feature = "pick_invalid_enum")]
+pub const CHANCE_TO_PICK_INVALID_ENUM: f64 = 0.01;
+#[cfg(not(feature = "pick_invalid_enum"))]
+pub const CHANCE_TO_PICK_INVALID_ENUM: f64 = 0.0;
+#[cfg(feature = "ignore_min_max")]
+pub const CHANCE_TO_IGNORE_MIN_MAX: f64 = 0.01;
+#[cfg(not(feature = "ignore_min_max"))]
+pub const CHANCE_TO_IGNORE_MIN_MAX: f64 = 0.0;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, NewFuzzed)]
@@ -107,7 +113,7 @@ impl<R: Rng> Mutator<R> {
             self.corpus_state.fields_fuzzed += 1;
         }
 
-        if self.gen_chance(0.10) {
+        if self.gen_chance(0.01) {
             *num = T::select_dangerous_number(&mut self.rng);
             return;
         }
