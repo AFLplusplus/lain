@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::Rng;
 
-use crate::rand::distributions::uniform::{SampleBorrow, SampleUniform};
+use crate::rand::distr::uniform::{SampleBorrow, SampleUniform};
 use crate::traits::*;
 use crate::types::*;
 use num::{Bounded, NumCast};
@@ -81,9 +81,10 @@ impl<R: Rng> Mutator<R> {
     }
 
     /// Generates a random choice of the given type
-    pub fn gen<T: 'static>(&mut self) -> T
+    pub fn gen<T>(&mut self) -> T
     where
         T: NewFuzzed,
+        T: 'static,
     {
         T::new_fuzzed(self, None)
     }
@@ -134,7 +135,7 @@ impl<R: Rng> Mutator<R> {
         T: BitXor<Output = T> + Add<Output = T> + Sub<Output = T> + NumCast + Copy,
     {
         let num_bits = (std::mem::size_of::<T>() * 8) as u8;
-        let idx: u8 = self.rng.gen_range(0..num_bits);
+        let idx: u8 = self.rng.random_range(0..num_bits);
 
         trace!("xoring bit {}", idx);
 
@@ -148,7 +149,7 @@ impl<R: Rng> Mutator<R> {
         T: BitXor<Output = T> + Add<Output = T> + Sub<Output = T> + NumCast + Copy,
     {
         let num_bits = (std::mem::size_of::<T>() * 8) as u8;
-        let bits_to_flip = self.rng.gen_range(1..=num_bits) as usize;
+        let bits_to_flip = self.rng.random_range(1..=num_bits) as usize;
 
         // 64 is chosen here as it's the the max primitive size (in bits) that we support
         // we choose to do this approach over a vec to avoid an allocation
@@ -177,9 +178,9 @@ impl<R: Rng> Mutator<R> {
             + WrappingAdd<Output = T>
             + WrappingSub<Output = T>,
     {
-        let added_num: i64 = self.rng.gen_range(1..=0x10);
+        let added_num: i64 = self.rng.random_range(1..=0x10);
 
-        if self.rng.gen::<bool>() {
+        if self.rng.random::<bool>() {
             trace!("adding {}", added_num);
             *num = num.wrapping_add(&num::cast(added_num).unwrap());
         } else {
@@ -189,7 +190,7 @@ impl<R: Rng> Mutator<R> {
     }
 
     /// Generates a number in the range from [min, max) (**note**: non-inclusive). Panics if min >= max.
-    pub fn gen_range<T, B1>(&mut self, min: B1, max: B1) -> B1
+    pub fn random_range<T, B1>(&mut self, min: B1, max: B1) -> B1
     where
         T: SampleUniform + std::fmt::Display,
         B1: SampleBorrow<T>
@@ -206,7 +207,7 @@ impl<R: Rng> Mutator<R> {
             panic!("cannot gen number where min ({}) >= max ({})", min, max);
         }
         trace!("generating number between {} and {}", &min, &max);
-        let num = self.rng.gen_range(min..max);
+        let num = self.rng.random_range(min..max);
         trace!("got {}", num);
 
         num
@@ -229,10 +230,10 @@ impl<R: Rng> Mutator<R> {
             + Div<Output = B1>
             + SampleUniform,
     {
-        use crate::rand::distributions::{Distribution, WeightedIndex};
+        use crate::rand::distr::{weighted::WeightedIndex, Distribution};
 
         if weighted == Weighted::None {
-            return self.gen_range(min, max);
+            return self.random_range(min, max);
         }
 
         // weighted numbers are done in a pretty dumb way, but any other way is difficult.
@@ -251,7 +252,7 @@ impl<R: Rng> Mutator<R> {
         let range = (max - min) + B1::from(1u8).unwrap();
 
         if range < B1::from(6u8).unwrap() {
-            return self.gen_range(min, max);
+            return self.random_range(min, max);
         }
 
         let one_third_of_range: B1 = range / B1::from(3u8).unwrap();
@@ -296,7 +297,7 @@ impl<R: Rng> Mutator<R> {
         let bounds = slices[subslice_index].0;
         trace!("subslice has bounds {:?}", bounds);
 
-        let num = self.rng.gen_range(bounds.0..bounds.1);
+        let num = self.rng.random_range(bounds.0..bounds.1);
 
         trace!("got {}", num);
 
@@ -322,7 +323,7 @@ impl<R: Rng> Mutator<R> {
             return true;
         }
 
-        self.rng.gen_bool(chance_percentage)
+        self.rng.random_bool(chance_percentage)
     }
 
     /// Client code should call this to signal to the mutator that a new fuzzer iteration is beginning
@@ -331,8 +332,8 @@ impl<R: Rng> Mutator<R> {
         self.flags = MutatorFlags::default();
         self.corpus_state.reset();
 
-        if self.rng.gen_bool(0.95) {
-            self.flags.field_count = Some(self.gen_range(1, 100));
+        if self.rng.random_bool(0.95) {
+            self.flags.field_count = Some(self.random_range(1, 100));
         }
     }
 

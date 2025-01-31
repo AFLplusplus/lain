@@ -198,15 +198,16 @@ impl<T: 'static + Send + Sync> FuzzerDriver<T> {
 /// ```compile_fail
 /// fn iteration_routine<R: Rng>(mutator: &mut Mutator<R>, thread_context: &mut FuzzerThreadContext, _global_context: Option<Arc<RwLock<GlobalContext>>>) -> Result<(), ()>
 /// ```
-pub fn start_fuzzer<F: 'static, C: 'static, T: 'static + Send + Sync>(
-    driver: Arc<FuzzerDriver<T>>,
-    callback: F,
-) where
+pub fn start_fuzzer<F, C, T>(driver: Arc<FuzzerDriver<T>>, callback: F)
+where
     F: Fn(&mut Mutator<StdRng>, &mut C, Option<Arc<RwLock<T>>>) -> Result<(), ()>
         + std::marker::Send
         + std::marker::Sync
         + Copy,
     C: Default,
+    F: 'static,
+    C: 'static,
+    T: 'static + Send + Sync,
 {
     let mut root_rng = StdRng::seed_from_u64(driver.seed());
 
@@ -216,7 +217,7 @@ pub fn start_fuzzer<F: 'static, C: 'static, T: 'static + Send + Sync>(
         let thread_driver = driver.clone();
         let thread_name = format!("Fuzzer thread {}", i);
 
-        let thread_seed: u64 = root_rng.gen();
+        let thread_seed: u64 = root_rng.random();
 
         let join_handle = thread::Builder::new()
             .name(thread_name)

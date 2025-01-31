@@ -152,15 +152,15 @@ fn mutatable_unit_enum(variants: &[Variant], cont_ident: &syn::Ident) -> TokenSt
 
     quote! {
         use _lain::rand::seq::SliceRandom;
-        use _lain::rand::distributions::Distribution;
+        use _lain::rand::distr::Distribution;
 
         static options: [#cont_ident; #variant_count] = [#(#variant_tokens,)*];
 
         static weights: [u64; #variant_count] = [#(#weights,)*];
 
         _lain::lazy_static::lazy_static! {
-            static ref dist: _lain::rand::distributions::WeightedIndex<u64> =
-                _lain::rand::distributions::WeightedIndex::new(weights.iter()).unwrap();
+            static ref dist: _lain::rand::distr::weighted::WeightedIndex<u64> =
+                _lain::rand::distr::weighted::WeightedIndex::new(weights.iter()).unwrap();
         }
 
         let idx: usize = dist.sample(&mut mutator.rng);
@@ -324,14 +324,14 @@ fn new_fuzzed_enum(variants: &[Variant], cont_ident: &syn::Ident) -> TokenStream
 
     quote! {
         use _lain::rand::seq::SliceRandom;
-        use _lain::rand::distributions::Distribution;
+        use _lain::rand::distr::Distribution;
 
         static weights: [u64; #variant_count] = [#(#weights,)*];
         static ignore_chances: [f64; #variant_count] = [#(#ignore_chances,)*];
 
         _lain::lazy_static::lazy_static! {
-            static ref dist: _lain::rand::distributions::WeightedIndex<u64> =
-                _lain::rand::distributions::WeightedIndex::new(&weights).unwrap();
+            static ref dist: _lain::rand::distr::weighted::WeightedIndex<u64> =
+                _lain::rand::distr::weighted::WeightedIndex::new(&weights).unwrap();
         }
 
         #constraints_prelude
@@ -371,15 +371,15 @@ fn new_fuzzed_unit_enum(variants: &[Variant], cont_ident: &syn::Ident) -> TokenS
 
     quote! {
         use _lain::rand::seq::SliceRandom;
-        use _lain::rand::distributions::Distribution;
+        use _lain::rand::distr::Distribution;
 
         static options: [#cont_ident; #variant_count] = [#(#variant_tokens,)*];
         static ignore_chances: [f64; #variant_count] = [#(#ignore_chances,)*];
         static weights: [u64; #variant_count] = [#(#weights,)*];
 
         _lain::lazy_static::lazy_static! {
-            static ref dist: _lain::rand::distributions::WeightedIndex<u64> =
-                _lain::rand::distributions::WeightedIndex::new(weights.iter()).unwrap();
+            static ref dist: _lain::rand::distr::weighted::WeightedIndex<u64> =
+                _lain::rand::distr::weighted::WeightedIndex::new(weights.iter()).unwrap();
         }
 
         // this shouldn't need to be an option but is because the compiler analysis

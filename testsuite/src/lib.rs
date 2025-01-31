@@ -214,7 +214,7 @@ mod test {
 
         let initialized_struct: Foo = Foo::new_fuzzed(&mut mutator, None);
 
-        assert!(initialized_struct.bar.len() >= 1);
+        assert!(!initialized_struct.bar.is_empty());
         assert!(initialized_struct.bar.len() <= 10);
     }
 
@@ -285,7 +285,7 @@ mod test {
         let initialized_struct = StructWithArray::new_fuzzed(&mut mutator, None);
 
         let mut result = 0u8;
-        for ref b in initialized_struct.array.iter() {
+        for b in initialized_struct.array.iter() {
             result ^= b.field;
         }
 
@@ -409,7 +409,7 @@ mod test {
     fn serializing_string() {
         let expected: [u8; 4] = [0x54, 0x45, 0x53, 0x54];
 
-        const CHOICE_TEXT: &'static str = "TEST";
+        const CHOICE_TEXT: &str = "TEST";
 
         #[derive(BinarySerialize)]
         struct MyStruct {
@@ -420,7 +420,7 @@ mod test {
         impl Default for MyStruct {
             fn default() -> Self {
                 MyStruct {
-                    choice: &CHOICE_TEXT,
+                    choice: CHOICE_TEXT,
                     choice2: String::from(CHOICE_TEXT),
                 }
             }
@@ -463,7 +463,7 @@ mod test {
     fn string_with_unicode_chars_serialized_size() {
         let my_string = String::from("🔥");
 
-        assert!(my_string.serialized_size() == my_string.as_bytes().len());
+        assert!(my_string.serialized_size() == my_string.len());
     }
 
     #[test]
@@ -503,7 +503,7 @@ mod test {
 
         // Do the first run
 
-        let seed: u64 = lain::rand::thread_rng().gen();
+        let seed: u64 = lain::rand::rng().random();
         let mut driver = lain::driver::FuzzerDriver::<GlobalContext>::new(1);
         let global_context: Arc<RwLock<GlobalContext>> = Default::default();
         driver.set_global_context(global_context.clone());
@@ -546,7 +546,6 @@ mod test {
         // Check for differences
         let reproduced_data = &global_context.read().unwrap().mutated_data;
         for i in 0..mutated_data.len() {
-            let i = i as usize;
             assert_eq!(mutated_data[i], reproduced_data[i]);
         }
 
@@ -617,7 +616,7 @@ mod test {
         let mut mutator = get_mutator();
 
         for _i in 0..100 {
-            let f = TestEnum::new_fuzzed(&mut mutator, Some(&Constraints::new().max_size(5)));
+            let f = TestEnum::new_fuzzed(&mut mutator, Some(Constraints::new().max_size(5)));
             assert!(f.serialized_size() <= 5);
         }
     }
@@ -983,8 +982,8 @@ mod test {
 
         for i in 0..expected.len() {
             if actual[i] != expected[i] {
-                println!("Expected:\n{}", hexdump(&*expected));
-                println!("\n\nActual:\n{}\n", hexdump(&*actual));
+                println!("Expected:\n{}", hexdump(expected));
+                println!("\n\nActual:\n{}\n", hexdump(actual));
 
                 panic!(
                     "value at index {} differed (expected {:02X}, actual {:02X})",
@@ -998,6 +997,6 @@ mod test {
     fn get_mutator() -> Mutator<SmallRng> {
         let rng = SmallRng::from_seed([1u8; 32]);
 
-        return Mutator::new(rng);
+        Mutator::new(rng)
     }
 }

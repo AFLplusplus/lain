@@ -8,7 +8,6 @@ pub fn wrap_in_const(_trait_: &str, _ty: &Ident, code: TokenStream) -> TokenStre
 
     let use_lain = quote! {
         #[allow(unknown_lints)]
-        #[cfg_attr(feature = "cargo-clippy", allow(useless_attribute))]
         #[allow(rust_2018_idioms)]
         use ::lain as _lain;
     };

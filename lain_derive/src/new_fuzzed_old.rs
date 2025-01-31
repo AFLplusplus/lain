@@ -210,8 +210,8 @@ pub(crate) fn new_fuzzed_helper(input: proc_macro::TokenStream) -> proc_macro::T
                 static weights: [u64; #variant_count] = [#(#weights,)*];
 
                 ::lain::lazy_static::lazy_static! {
-                    static ref dist: ::lain::rand::distributions::WeightedIndex<u64> =
-                        ::lain::rand::distributions::WeightedIndex::new(weights.iter()).unwrap();
+                    static ref dist: ::lain::rand::distr::weighted::WeightedIndex<u64> =
+                        ::lain::rand::distr::weighted::WeightedIndex::new(weights.iter()).unwrap();
                 }
 
                 #inner_body

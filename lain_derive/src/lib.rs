@@ -29,7 +29,7 @@ fn to_compile_errors(errors: Vec<syn::Error>) -> proc_macro2::TokenStream {
     quote!(#(#compile_errors)*)
 }
 
-/// Implements [rand::distributions::Standard] for enums that derive this trait.
+/// Implements [rand::distr::Standard] for enums that derive this trait.
 /// This will allow you to use `rand::gen()` to randomly select an enum value.
 /// # Example
 ///

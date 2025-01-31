@@ -42,20 +42,16 @@ fn grow_vec<T: NewFuzzed + SerializedSize, R: Rng>(
     mut max_size: Option<usize>,
 ) {
     let resize_count = VecResizeCount::new_fuzzed(mutator, None);
-    let resize_max = if let Some(max) = max_elems {
-        max
-    } else {
-        9 // old magic value from lain
-    };
+    let resize_max = max_elems.unwrap_or(9);
     let mut num_elements = if vec.is_empty() {
-        mutator.gen_range(1, resize_max)
+        mutator.random_range(1, resize_max)
     } else {
         match resize_count {
             VecResizeCount::Quarter => vec.len() / 4,
             VecResizeCount::Half => vec.len() / 2,
             VecResizeCount::ThreeQuarters => vec.len() - (vec.len() / 4),
-            VecResizeCount::FixedBytes => mutator.gen_range(1, resize_max),
-            VecResizeCount::AllBytes => mutator.gen_range(1, vec.len() + 1),
+            VecResizeCount::FixedBytes => mutator.random_range(1, resize_max),
+            VecResizeCount::AllBytes => mutator.random_range(1, vec.len() + 1),
         }
     };
 
@@ -140,19 +136,19 @@ fn shrink_vec<T, R: Rng>(vec: &mut Vec<T>, mutator: &mut Mutator<R>, min_size: O
         return;
     }
 
-    let min_size = if let Some(min) = min_size { min } else { 0 };
+    let min_size = min_size.unwrap_or_default();
 
     let resize_count = VecResizeCount::new_fuzzed(mutator, None);
     let mut num_elements = match resize_count {
         VecResizeCount::Quarter => vec.len() / 4,
         VecResizeCount::Half => vec.len() / 2,
         VecResizeCount::ThreeQuarters => vec.len() - (vec.len() / 4),
-        VecResizeCount::FixedBytes => min(min(mutator.gen_range(1, 9), vec.len()), min_size),
+        VecResizeCount::FixedBytes => min(min(mutator.random_range(1, 9), vec.len()), min_size),
         VecResizeCount::AllBytes => min(vec.len(), min_size),
     };
 
     if num_elements == 0 {
-        num_elements = mutator.gen_range(0, vec.len() + 1);
+        num_elements = mutator.random_range(0, vec.len() + 1);
     }
 
     num_elements = std::cmp::min(num_elements, vec.len() - min_size);
@@ -267,36 +263,34 @@ where
 
                 self.as_mut_slice().mutate(mutator, constraints.as_ref());
             }
-        } else {
-            if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
-                let resize_type = VecResizeType::new_fuzzed(mutator, None);
-                if resize_type == VecResizeType::Grow && can_grow {
-                    grow_vec(
-                        self,
-                        mutator,
-                        constraints.and_then(|c| c.max),
-                        constraints.and_then(|c| c.max_size),
-                    );
-                } else {
-                    shrink_vec(self, mutator, constraints.and_then(|c| c.min));
-                }
+        } else if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
+            let resize_type = VecResizeType::new_fuzzed(mutator, None);
+            if resize_type == VecResizeType::Grow && can_grow {
+                grow_vec(
+                    self,
+                    mutator,
+                    constraints.and_then(|c| c.max),
+                    constraints.and_then(|c| c.max_size),
+                );
             } else {
-                // Recreate the constraints so that the min/max types match
-                let constraints = constraints.and_then(|c| {
-                    if c.max_size.is_none() {
-                        None
-                    } else {
-                        let mut new_constraints = Constraints::new();
-                        new_constraints.base_object_size_accounted_for =
-                            c.base_object_size_accounted_for;
-                        new_constraints.max_size = c.max_size;
-
-                        Some(new_constraints)
-                    }
-                });
-
-                self.as_mut_slice().mutate(mutator, constraints.as_ref());
+                shrink_vec(self, mutator, constraints.and_then(|c| c.min));
             }
+        } else {
+            // Recreate the constraints so that the min/max types match
+            let constraints = constraints.and_then(|c| {
+                if c.max_size.is_none() {
+                    None
+                } else {
+                    let mut new_constraints = Constraints::new();
+                    new_constraints.base_object_size_accounted_for =
+                        c.base_object_size_accounted_for;
+                    new_constraints.max_size = c.max_size;
+
+                    Some(new_constraints)
+                }
+            });
+
+            self.as_mut_slice().mutate(mutator, constraints.as_ref());
         }
     }
 }
@@ -351,36 +345,34 @@ where
 
                 self.as_mut_slice().mutate(mutator, constraints.as_ref());
             }
-        } else {
-            if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
-                let resize_type = VecResizeType::new_fuzzed(mutator, None);
-                if resize_type == VecResizeType::Grow && can_grow {
-                    grow_vec(
-                        self,
-                        mutator,
-                        constraints.and_then(|c| c.max),
-                        constraints.and_then(|c| c.max_size),
-                    );
-                } else {
-                    shrink_vec(self, mutator, constraints.and_then(|c| c.min));
-                }
+        } else if mutator.gen_chance(CHANCE_TO_RESIZE_VEC) {
+            let resize_type = VecResizeType::new_fuzzed(mutator, None);
+            if resize_type == VecResizeType::Grow && can_grow {
+                grow_vec(
+                    self,
+                    mutator,
+                    constraints.and_then(|c| c.max),
+                    constraints.and_then(|c| c.max_size),
+                );
             } else {
-                // Recreate the constraints so that the min/max types match
-                let constraints = constraints.and_then(|c| {
-                    if c.max_size.is_none() {
-                        None
-                    } else {
-                        let mut new_constraints = Constraints::new();
-                        new_constraints.base_object_size_accounted_for =
-                            c.base_object_size_accounted_for;
-                        new_constraints.max_size = c.max_size;
-
-                        Some(new_constraints)
-                    }
-                });
-
-                self.as_mut_slice().mutate(mutator, constraints.as_ref());
+                shrink_vec(self, mutator, constraints.and_then(|c| c.min));
             }
+        } else {
+            // Recreate the constraints so that the min/max types match
+            let constraints = constraints.and_then(|c| {
+                if c.max_size.is_none() {
+                    None
+                } else {
+                    let mut new_constraints = Constraints::new();
+                    new_constraints.base_object_size_accounted_for =
+                        c.base_object_size_accounted_for;
+                    new_constraints.max_size = c.max_size;
+
+                    Some(new_constraints)
+                }
+            });
+
+            self.as_mut_slice().mutate(mutator, constraints.as_ref());
         }
     }
 }
@@ -500,7 +492,7 @@ impl Mutatable for bool {
         mutator: &mut Mutator<R>,
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
-        *self = mutator.gen_range(0u8, 2u8) != 0;
+        *self = mutator.random_range(0u8, 2u8) != 0;
     }
 }
 
@@ -549,7 +541,7 @@ impl Mutatable for AsciiString {
         trace!("performing mutation on an AsciiString");
 
         // TODO: Implement logic for resizing?
-        let num_mutations = mutator.gen_range(1, self.inner.len());
+        let num_mutations = mutator.random_range(1, self.inner.len());
         for idx in index::sample(&mut mutator.rng, self.inner.len(), num_mutations).iter() {
             self.inner[idx] = AsciiChar::new_fuzzed(mutator, None);
         }
@@ -567,7 +559,7 @@ impl Mutatable for Utf8String {
         trace!("performing mutation on a Utf8String");
 
         // TODO: Implement logic for resizing?
-        let num_mutations = mutator.gen_range(1, self.inner.len());
+        let num_mutations = mutator.random_range(1, self.inner.len());
         for idx in index::sample(&mut mutator.rng, self.inner.len(), num_mutations).iter() {
             self.inner[idx] = Utf8Char::new_fuzzed(mutator, None);
         }

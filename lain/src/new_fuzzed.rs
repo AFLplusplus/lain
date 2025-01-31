@@ -1,10 +1,10 @@
 use crate::mutator::Mutator;
 
-use crate::rand::seq::SliceRandom;
 use crate::rand::Rng;
 use crate::traits::*;
 use crate::types::*;
 use num_traits::Bounded;
+use rand::seq::IndexedRandom;
 use std::fmt::Debug;
 use std::mem::MaybeUninit;
 use std::{char, cmp};
@@ -315,7 +315,7 @@ where
 //             idx += 1;
 //             if SIZE - idx > 0 {
 //                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
-//                     let repeat_end_idx = mutator.gen_range(idx, SIZE);
+//                     let repeat_end_idx = mutator.random_range(idx, SIZE);
 //                     while idx < repeat_end_idx {
 //                         arr_ptr.add(idx).write(element.clone());
 //                         idx += 1;
@@ -407,7 +407,7 @@ impl NewFuzzed for Utf8String {
             idx += 1;
             if string_length - idx > 0 {
                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
-                    let repeat_end_idx = mutator.gen_range(idx, string_length);
+                    let repeat_end_idx = mutator.random_range(idx, string_length);
                     while idx < repeat_end_idx {
                         output.inner.push(chr.clone());
                         idx += 1;
@@ -471,7 +471,7 @@ impl NewFuzzed for AsciiString {
             idx += 1;
             if string_length - idx > 0 {
                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
-                    let repeat_end_idx = mutator.gen_range(idx, string_length);
+                    let repeat_end_idx = mutator.random_range(idx, string_length);
                     while idx < repeat_end_idx {
                         output.inner.push(chr.clone());
                         idx += 1;
@@ -504,12 +504,12 @@ impl NewFuzzed for Utf8Char {
         //
         // I like his logic for mode generation, so that's kept as well
 
-        let mode_chance = mutator.gen_range(0, 100);
+        let mode_chance = mutator.random_range(0, 100);
         match mode_chance {
-            0..=49 => Utf8Char(mutator.gen_range(0, 0xB0) as u8 as char),
+            0..=49 => Utf8Char(mutator.random_range(0, 0xB0) as u8 as char),
             50..=59 => {
                 loop {
-                    if let Some(c) = char::from_u32(mutator.gen_range(0, 0x10000)) {
+                    if let Some(c) = char::from_u32(mutator.random_range(0, 0x10000)) {
                         return Utf8Char(c);
                     }
 
@@ -592,7 +592,7 @@ impl NewFuzzed for Utf8Char {
             }
             90..=94 => {
                 // Tricky unicode, part 2
-                Utf8Char(char::from_u32(mutator.gen_range(0x2000, 0x2070)).unwrap())
+                Utf8Char(char::from_u32(mutator.random_range(0x2000, 0x2070)).unwrap())
             }
             95..=99 => {
                 // Completely arbitrary characters
@@ -628,11 +628,11 @@ impl NewFuzzed for AsciiChar {
 
                 // even though we could use gen_chance() here, let's not in case we want
                 // to add more special classes
-                let mode_chance = mutator.gen_range(0, 100);
+                let mode_chance = mutator.random_range(0, 100);
                 match mode_chance {
                     0..=49 => {
                         // Just generate a random char
-                        return AsciiChar(mutator.gen_range(0, 0x80) as u8 as char);
+                        return AsciiChar(mutator.random_range(0, 0x80) as u8 as char);
                     }
                     50..=99 => {
                         // Characters often used in programming languages
@@ -681,7 +681,7 @@ impl NewFuzzed for bool {
     ) -> Self {
         trace!("generating random bool");
 
-        mutator.rng.gen()
+        mutator.rng.random()
     }
 }
 
@@ -715,13 +715,13 @@ macro_rules! impl_new_fuzzed {
 
                             max = if let Some(ref max) = constraints.max {
                                 if mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX) {
-                                    $name::max_value()
+                                    $name::MAX
                                 } else {
                                     ignore_max = false;
                                     *max
                                 }
                             } else {
-                                $name::max_value()
+                                $name::MAX
                             };
 
                             weight = constraints.weighted;
@@ -738,7 +738,7 @@ macro_rules! impl_new_fuzzed {
                                 return $name::select_dangerous_number(&mut mutator.rng);
                             }
 
-                            return mutator.rng.gen();
+                            return mutator.rng.random();
                         }
                     }
                 }
@@ -798,7 +798,7 @@ macro_rules! impl_new_fuzzed_array {
                         idx += 1;
                         if $size - idx > 0 {
                             if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
-                                let repeat_end_idx = mutator.gen_range(idx, $size);
+                                let repeat_end_idx = mutator.random_range(idx, $size);
                                 while idx < repeat_end_idx {
                                     unsafe {
                                         arr_ptr.add(idx).write(element.clone());

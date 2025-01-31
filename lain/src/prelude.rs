@@ -16,6 +16,6 @@ pub use crate::traits::*;
 pub use crate::types::*;
 
 #[doc(no_inline)]
-pub use crate::rand::distributions::Distribution;
+pub use crate::rand::distr::Distribution;
 #[doc(no_inline)]
 pub use crate::rand::Rng;
