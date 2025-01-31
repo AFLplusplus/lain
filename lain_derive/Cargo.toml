@@ -12,8 +12,8 @@ license.workspace = true
 syn = { version = "0.15", features = ["extra-traits"] }
 quote = "0.6"
 proc-macro2 = "0.4"
-byteorder = "1.2"
-log = "0.4"
+byteorder = "1.5.0"
+log = "0.4.25"
 
 [lib]
 proc-macro = true
