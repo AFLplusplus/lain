@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 lain = { path = "../../lain" }
-ctrlc = "3.1"
+ctrlc = "3.4.5"
