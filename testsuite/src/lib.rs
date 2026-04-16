@@ -175,7 +175,7 @@ mod test {
 
     #[test]
     fn test_ignored_fields() {
-        #[derive(NewFuzzed, BinarySerialize, Clone)]
+        #[derive(NewFuzzed, BinarySerialize, Clone, Mutatable)]
         struct IgnoredFieldsStruct {
             #[lain(ignore)]
             ignored: u8,
@@ -183,9 +183,34 @@ mod test {
 
         let mut mutator = get_mutator();
 
-        let initialized_struct = IgnoredFieldsStruct::new_fuzzed(&mut mutator, None);
+        let mut initialized_struct = IgnoredFieldsStruct::new_fuzzed(&mut mutator, None);
 
         assert_eq!(initialized_struct.ignored, 0);
+
+        initialized_struct.mutate(&mut mutator, None);
+        assert_eq!(initialized_struct.ignored, 0);
+    }
+
+    #[test]
+    fn test_ignored_fields_enum() {
+        #[derive(NewFuzzed, BinarySerialize, Clone, Mutatable, PartialEq, Debug)]
+        enum IgnoredFieldsEnum {
+            Variant1(#[lain(ignore)] u8),
+        }
+
+        let mut mutator = get_mutator();
+
+        let mut initialized_enum = IgnoredFieldsEnum::new_fuzzed(&mut mutator, None);
+
+        match &initialized_enum {
+            IgnoredFieldsEnum::Variant1(ignored) => assert_eq!(*ignored, 0),
+        }
+
+        initialized_enum.mutate(&mut mutator, None);
+
+        match &initialized_enum {
+            IgnoredFieldsEnum::Variant1(ignored) => assert_eq!(*ignored, 0),
+        }
     }
 
     #[test]
@@ -592,6 +617,20 @@ mod test {
 
         ascii_str.mutate(&mut mutator, None);
         println!("{:?}", ascii_str);
+    }
+
+    #[test]
+    fn test_large_array_mutation_support() {
+        #[derive(NewFuzzed, Mutatable, BinarySerialize)]
+        struct StructWithHugeArray {
+            pub huge: [u8; 128],
+        }
+
+        let mut mutator = get_mutator();
+        let mut instance = StructWithHugeArray::new_fuzzed(&mut mutator, None);
+
+        assert_eq!(instance.huge.serialized_size(), 128);
+        instance.mutate(&mut mutator, None);
     }
 
     #[test]

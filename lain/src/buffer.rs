@@ -36,45 +36,30 @@ where
     }
 }
 
-macro_rules! impl_serialized_size_array {
-    ( $($size:expr),* ) => {
-        $(
-            impl<T> SerializedSize for [T; $size]
-            where T: SerializedSize {
-                #[inline]
-                fn serialized_size(&self) -> usize {
-                    trace!("using default serialized_size for array");
-                    if $size == 0 {
-                        return 0;
-                    }
+impl<T, const SIZE: usize> SerializedSize for [T; SIZE]
+where
+    T: SerializedSize,
+{
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        trace!("using default serialized_size for array");
+        if SIZE == 0 {
+            return 0;
+        }
 
-                    let size = self
-                        .iter()
-                        .map(SerializedSize::serialized_size)
-                        .fold(0, |sum, i| sum + i);
+        self.iter().map(SerializedSize::serialized_size).sum()
+    }
 
-                    size
-                }
+    #[inline]
+    fn min_nonzero_elements_size() -> usize {
+        T::min_nonzero_elements_size() * SIZE
+    }
 
-                #[inline]
-                fn min_nonzero_elements_size() -> usize {
-                    T::min_nonzero_elements_size() * $size
-                }
-
-                #[inline]
-                fn max_default_object_size() -> usize {
-                    T::max_default_object_size() * $size
-                }
-            }
-        )*
+    #[inline]
+    fn max_default_object_size() -> usize {
+        T::max_default_object_size() * SIZE
     }
 }
-
-impl_serialized_size_array!(
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-    50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
-);
 
 impl<T> SerializedSize for Vec<T>
 where
@@ -415,10 +400,10 @@ where
     #[inline]
     fn serialized_size(&self) -> usize {
         if let Some(ref inner) = self {
-            inner.serialized_size();
+            inner.serialized_size()
+        } else {
+            0
         }
-
-        0
     }
 
     #[inline]

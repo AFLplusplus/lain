@@ -9,17 +9,19 @@ default:
 clippy:
     cargo clippy --workspace --all-targets -- -D warnings
 
-# Format codebase (Rust, TOML, YAML, Markdown)
+# Format codebase (Rust, TOML, YAML, Markdown, Justfile)
 fmt:
     cargo fmt --all
     taplo format
     npx prettier --write "**/*.yml" "**/*.yaml" "**/*.md"
+    just --fmt --unstable
 
-# Check codebase formatting (Rust, TOML, YAML, Markdown)
+# Check codebase formatting (Rust, TOML, YAML, Markdown, Justfile)
 fmt-check:
     cargo fmt --all -- --check
     taplo format --check
     npx prettier --check "**/*.yml" "**/*.yaml" "**/*.md"
+    just --fmt --check --unstable
 
 # Run unit tests across the workspace
 test-unit:
@@ -48,20 +50,20 @@ build-fuzzer:
     # Wait for server to start listening
     sleep 1
 
-    echo "Running example fuzzer for {{duration}} seconds..."
+    echo "Running example fuzzer for {{ duration }} seconds..."
     # Run the fuzzer binary directly to avoid cargo overhead and accurately capture PID
     ./examples/target/debug/example_fuzzer &
     FUZZER_PID=$!
 
     # Sleep for the specified duration
-    sleep {{duration}}
+    sleep {{ duration }}
 
     echo "Checking if fuzzer is still running..."
     if kill -0 $FUZZER_PID 2>/dev/null; then
         echo "Fuzzer is running fine. Stopping it gracefully..."
         kill -INT $FUZZER_PID
         wait $FUZZER_PID || true
-        echo "Fuzzer ran successfully for {{duration}} seconds."
+        echo "Fuzzer ran successfully for {{ duration }} seconds."
     else
         echo "Error: Fuzzer crashed or stopped prematurely!"
         # Check if server crashed

@@ -81,11 +81,11 @@ where
                         min = 0;
                     }
 
-                    if constraints.max.is_some()
-                        && mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX)
-                    {
-                        if let Some(new_max) = constraints.max.unwrap().checked_mul(2) {
-                            max = new_max;
+                    if let Some(current_max) = constraints.max {
+                        if mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX) {
+                            if let Some(new_max) = current_max.checked_mul(2) {
+                                max = new_max;
+                            }
                         }
                     }
                 }
@@ -191,11 +191,11 @@ where
                         min = 0;
                     }
 
-                    if constraints.max.is_some()
-                        && mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX)
-                    {
-                        // we just hope this doesn't overflow.
-                        max = constraints.max.unwrap() * 2;
+                    if let Some(current_max) = constraints.max {
+                        if mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX) {
+                            // we just hope this doesn't overflow.
+                            max = current_max * 2;
+                        }
                     }
                 }
 
@@ -771,7 +771,51 @@ macro_rules! impl_new_fuzzed {
 
 // BUG: f32/f64 generate a number between 0/1 when no constraints are supplied,
 // otherwise they generate an *integer* between min/max.
-impl_new_fuzzed!(u8, i8, u16, i16, u32, i32, u64, i64, f32, f64);
+impl_new_fuzzed!(u8, i8, u16, i16, u32, i32, u64, i64);
+
+impl NewFuzzed for f32 {
+    type RangeType = f32;
+
+    fn new_fuzzed<R: Rng>(
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> Self {
+        if mutator.gen_chance(0.10) {
+            return f32::select_dangerous_number(&mut mutator.rng);
+        }
+        if let Some(constraints) = constraints {
+            let min = constraints.min.unwrap_or(-1000.0);
+            let max = constraints.max.unwrap_or(1000.0);
+            if min >= max {
+                return min;
+            }
+            return mutator.gen_weighted_range(min, max, constraints.weighted);
+        }
+        mutator.rng.random()
+    }
+}
+
+impl NewFuzzed for f64 {
+    type RangeType = f64;
+
+    fn new_fuzzed<R: Rng>(
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> Self {
+        if mutator.gen_chance(0.10) {
+            return f64::select_dangerous_number(&mut mutator.rng);
+        }
+        if let Some(constraints) = constraints {
+            let min = constraints.min.unwrap_or(-1000.0);
+            let max = constraints.max.unwrap_or(1000.0);
+            if min >= max {
+                return min;
+            }
+            return mutator.gen_weighted_range(min, max, constraints.weighted);
+        }
+        mutator.rng.random()
+    }
+}
 
 impl<T, const SIZE: usize> NewFuzzed for [T; SIZE]
 where
@@ -786,7 +830,7 @@ where
         let per_item_max_size: Option<usize> = constraints.and_then(|c| {
             c.max_size
                 .as_ref()
-                .map(|size| if SIZE == 0 { 0 } else { *size / SIZE })
+                .map(|size| size.checked_div(SIZE).unwrap_or(0))
         });
 
         let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();
@@ -851,7 +895,7 @@ where
         let per_item_max_size: Option<usize> = constraints.and_then(|c| {
             c.max_size
                 .as_ref()
-                .map(|size| if SIZE == 0 { 0 } else { *size / SIZE })
+                .map(|size| size.checked_div(SIZE).unwrap_or(0))
         });
 
         let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();

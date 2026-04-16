@@ -51,9 +51,7 @@ where
             let end = mutator.random_range(start, vec.len() + 1);
             let chunk = vec[start..end].to_vec();
             let insert_at = mutator.random_range(0, vec.len() + 1);
-            for (i, item) in chunk.into_iter().enumerate() {
-                vec.insert(insert_at + i, item);
-            }
+            vec.splice(insert_at..insert_at, chunk);
         }
     } else if !vec.is_empty() {
         // Shrinking
@@ -718,18 +716,41 @@ impl Mutatable for i64 {
     }
 }
 
-impl<T> Mutatable for [T; 0]
-where
-    T: Mutatable,
-{
-    type RangeType = u8;
+impl Mutatable for f32 {
+    type RangeType = f32;
 
+    #[inline(always)]
     fn mutate<R: Rng>(
         &mut self,
-        _mutator: &mut Mutator<R>,
+        mutator: &mut Mutator<R>,
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
-        // nop
+        if mutator.gen_chance(0.01) {
+            *self = f32::select_dangerous_number(&mut mutator.rng);
+            return;
+        }
+        let mut val = self.to_bits();
+        mutator.mutate(&mut val);
+        *self = f32::from_bits(val);
+    }
+}
+
+impl Mutatable for f64 {
+    type RangeType = f64;
+
+    #[inline(always)]
+    fn mutate<R: Rng>(
+        &mut self,
+        mutator: &mut Mutator<R>,
+        _constraints: Option<&Constraints<Self::RangeType>>,
+    ) {
+        if mutator.gen_chance(0.01) {
+            *self = f64::select_dangerous_number(&mut mutator.rng);
+            return;
+        }
+        let mut val = self.to_bits();
+        mutator.mutate(&mut val);
+        *self = f64::from_bits(val);
     }
 }
 
@@ -805,28 +826,20 @@ where
     }
 }
 
-macro_rules! impl_mutatable_array {
-    ( $($size:expr),* ) => {
-        $(
-            impl<T> Mutatable for [T; $size]
-            where
-                T: Mutatable + SerializedSize,
-                T::RangeType: Clone,
-            {
-                type RangeType = T::RangeType;
+impl<T, const SIZE: usize> Mutatable for [T; SIZE]
+where
+    T: Mutatable + SerializedSize,
+    T::RangeType: Clone,
+{
+    type RangeType = T::RangeType;
 
-                #[inline(always)]
-                fn mutate<R: Rng>(&mut self, mutator: &mut Mutator<R>, constraints: Option<&Constraints<Self::RangeType>>) {
-                    // Treat this as a slice
-                    self[..].mutate(mutator, constraints);
-                }
-            }
-        )*
+    #[inline(always)]
+    fn mutate<R: Rng>(
+        &mut self,
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) {
+        // Treat this as a slice
+        self[..].mutate(mutator, constraints);
     }
 }
-
-impl_mutatable_array!(
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-    27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-    51, 52, 53, 54, 55, 56, 57, 58, 59, 60
-);

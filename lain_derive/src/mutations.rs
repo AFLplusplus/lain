@@ -243,7 +243,11 @@ fn mutatable_enum_visitor(variants: &[Variant], cont_ident: &syn::Ident) -> Vec<
                         field_mutator(field, "__field", true);
                     field_identifiers.push(quote_spanned! { field.member.span() => #value_ident });
 
-                    initializer
+                    if field.attrs.ignore() {
+                        TokenStream::new()
+                    } else {
+                        initializer
+                    }
                 })
                 .collect();
 
