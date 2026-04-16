@@ -773,9 +773,16 @@ macro_rules! impl_new_fuzzed {
 // otherwise they generate an *integer* between min/max.
 impl_new_fuzzed!(u8, i8, u16, i16, u32, i32, u64, i64);
 
+// Static safe float boundary limits to prevent division/calc overhead at runtime
+const DEFAULT_F32_MIN: f32 = -1.692947e38;
+const DEFAULT_F32_MAX: f32 = 1.692947e38;
+const DEFAULT_F64_MIN: f64 = -8.94374693961351e307;
+const DEFAULT_F64_MAX: f64 = 8.94374693961351e307;
+
 impl NewFuzzed for f32 {
     type RangeType = f32;
 
+    #[inline(always)]
     fn new_fuzzed<R: Rng>(
         mutator: &mut Mutator<R>,
         constraints: Option<&Constraints<Self::RangeType>>,
@@ -784,20 +791,40 @@ impl NewFuzzed for f32 {
             return f32::select_dangerous_number(&mut mutator.rng);
         }
         if let Some(constraints) = constraints {
-            let min = constraints.min.unwrap_or(-1000.0);
-            let max = constraints.max.unwrap_or(1000.0);
+            let min = constraints.min.unwrap_or(DEFAULT_F32_MIN);
+            let max = constraints.max.unwrap_or(DEFAULT_F32_MAX);
             if min >= max {
                 return min;
             }
             return mutator.gen_weighted_range(min, max, constraints.weighted);
         }
-        mutator.rng.random()
+
+        // Unconstrained Smart Mode Strategy
+        let mode = mutator.rng.random_range(0..100);
+        match mode {
+            0..=49 => {
+                // 50%: Float-specific standardized high-fidelity programmatic ranges
+                mutator.gen_weighted_range(-100000.0, 100000.0, Weighted::None)
+            }
+            50..=74 => {
+                // 25%: Unadulterated bitwise float noise (exponents, extreme fractions)
+                f32::from_bits(mutator.rng.random::<u32>())
+            }
+            _ => {
+                // 25%: Pure corner boundaries (1.0, 0.0, -1.0, MIN_POSITIVE)
+                [1.0, 0.0, -1.0, f32::MIN_POSITIVE]
+                    .choose(&mut mutator.rng)
+                    .unwrap()
+                    .to_owned()
+            }
+        }
     }
 }
 
 impl NewFuzzed for f64 {
     type RangeType = f64;
 
+    #[inline(always)]
     fn new_fuzzed<R: Rng>(
         mutator: &mut Mutator<R>,
         constraints: Option<&Constraints<Self::RangeType>>,
@@ -806,14 +833,23 @@ impl NewFuzzed for f64 {
             return f64::select_dangerous_number(&mut mutator.rng);
         }
         if let Some(constraints) = constraints {
-            let min = constraints.min.unwrap_or(-1000.0);
-            let max = constraints.max.unwrap_or(1000.0);
+            let min = constraints.min.unwrap_or(DEFAULT_F64_MIN);
+            let max = constraints.max.unwrap_or(DEFAULT_F64_MAX);
             if min >= max {
                 return min;
             }
             return mutator.gen_weighted_range(min, max, constraints.weighted);
         }
-        mutator.rng.random()
+
+        let mode = mutator.rng.random_range(0..100);
+        match mode {
+            0..=49 => mutator.gen_weighted_range(-100000.0, 100000.0, Weighted::None),
+            50..=74 => f64::from_bits(mutator.rng.random::<u64>()),
+            _ => [1.0, 0.0, -1.0, f64::MIN_POSITIVE]
+                .choose(&mut mutator.rng)
+                .unwrap()
+                .to_owned(),
+        }
     }
 }
 
