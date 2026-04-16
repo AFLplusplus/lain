@@ -1,5 +1,5 @@
 use rand::seq::SliceRandom;
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use crate::rand::distr::uniform::{SampleBorrow, SampleUniform};
 use crate::traits::*;

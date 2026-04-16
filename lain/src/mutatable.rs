@@ -32,6 +32,76 @@ enum VecResizeType {
     Shrink,
 }
 
+/// Performs robust, structural resizing on character sequences.
+/// Supports stochastic splicing, raw element injection, and multi-mode shrinkage.
+fn advanced_resize<T, R: Rng, F>(vec: &mut Vec<T>, mutator: &mut Mutator<R>, mut gen: F)
+where
+    T: Clone,
+    F: FnMut(&mut Mutator<R>) -> T,
+{
+    if vec.is_empty() || mutator.gen_chance(0.5) {
+        // Growing
+        if vec.is_empty() || mutator.gen_chance(0.5) {
+            let grow_by = mutator.random_range(1, 16);
+            for _ in 0..grow_by {
+                vec.push(gen(mutator));
+            }
+        } else {
+            let start = mutator.random_range(0, vec.len());
+            let end = mutator.random_range(start, vec.len() + 1);
+            let chunk = vec[start..end].to_vec();
+            let insert_at = mutator.random_range(0, vec.len() + 1);
+            for (i, item) in chunk.into_iter().enumerate() {
+                vec.insert(insert_at + i, item);
+            }
+        }
+    } else if !vec.is_empty() {
+        // Shrinking
+        if mutator.gen_chance(0.5) {
+            let start = mutator.random_range(0, vec.len());
+            let end = mutator.random_range(start, vec.len() + 1);
+            vec.drain(start..end);
+        } else {
+            let remove_count = mutator.random_range(1, vec.len() + 1);
+            if mutator.gen_chance(0.5) {
+                vec.drain(0..remove_count);
+            } else {
+                vec.truncate(vec.len() - remove_count);
+            }
+        }
+    }
+}
+
+/// Encapsulates entire character fuzzing process for structural string buffers.
+fn mutate_char_vec<T, R: Rng, F>(vec: &mut Vec<T>, mutator: &mut Mutator<R>, mut gen: F)
+where
+    T: Clone,
+    F: FnMut(&mut Mutator<R>) -> T,
+{
+    const CHANCE_TO_RESIZE: f64 = 0.01;
+    const CHANCE_TO_RESIZE_EMPTY: f64 = 0.33;
+
+    let should_resize = if vec.is_empty() {
+        mutator.gen_chance(CHANCE_TO_RESIZE_EMPTY)
+    } else {
+        mutator.gen_chance(CHANCE_TO_RESIZE)
+    };
+
+    if should_resize {
+        advanced_resize(vec, mutator, &mut gen);
+        return;
+    }
+
+    if vec.is_empty() {
+        return;
+    }
+
+    let num_mutations = mutator.random_range(1, vec.len());
+    for idx in index::sample(&mut mutator.rng, vec.len(), num_mutations).iter() {
+        vec[idx] = gen(mutator);
+    }
+}
+
 /// Grows a `Vec`.
 /// This will randomly select to grow by a factor of 1/4, 1/2, 3/4, or a fixed number of bytes
 /// in the range of [1, 8]. Elements may be added randomly to the beginning or end of the the vec
@@ -539,12 +609,7 @@ impl Mutatable for AsciiString {
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
         trace!("performing mutation on an AsciiString");
-
-        // TODO: Implement logic for resizing?
-        let num_mutations = mutator.random_range(1, self.inner.len());
-        for idx in index::sample(&mut mutator.rng, self.inner.len(), num_mutations).iter() {
-            self.inner[idx] = AsciiChar::new_fuzzed(mutator, None);
-        }
+        mutate_char_vec(&mut self.inner, mutator, |m| AsciiChar::new_fuzzed(m, None));
     }
 }
 
@@ -557,12 +622,22 @@ impl Mutatable for Utf8String {
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
         trace!("performing mutation on a Utf8String");
+        mutate_char_vec(&mut self.inner, mutator, |m| Utf8Char::new_fuzzed(m, None));
+    }
+}
 
-        // TODO: Implement logic for resizing?
-        let num_mutations = mutator.random_range(1, self.inner.len());
-        for idx in index::sample(&mut mutator.rng, self.inner.len(), num_mutations).iter() {
-            self.inner[idx] = Utf8Char::new_fuzzed(mutator, None);
-        }
+impl Mutatable for String {
+    type RangeType = usize;
+
+    fn mutate<R: Rng>(
+        &mut self,
+        mutator: &mut Mutator<R>,
+        _constraints: Option<&Constraints<Self::RangeType>>,
+    ) {
+        trace!("performing mutation on a String");
+        let mut chars: Vec<char> = self.chars().collect();
+        mutate_char_vec(&mut chars, mutator, |m| char::new_fuzzed(m, None));
+        *self = chars.into_iter().collect();
     }
 }
 

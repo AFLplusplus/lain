@@ -73,18 +73,17 @@ fn bench_serialize_1000(c: &mut Criterion) {
         ..Default::default()
     };
 
-    c.bench(
-        function_name.as_ref(),
-        Benchmark::new("serialize", move |b| {
-            let mut buffer = Vec::with_capacity(struct_size);
-            b.iter(|| {
-                parent.binary_serialize::<_, BigEndian>(&mut buffer);
-                black_box(&buffer);
-                buffer.clear();
-            });
-        })
-        .throughput(Throughput::Bytes(struct_size as u32)),
-    );
+    let mut group = c.benchmark_group(&function_name);
+    group.throughput(Throughput::Bytes(struct_size as u64));
+    group.bench_function("serialize", |b| {
+        let mut buffer = Vec::with_capacity(struct_size);
+        b.iter(|| {
+            parent.binary_serialize::<_, BigEndian>(&mut buffer);
+            black_box(&buffer);
+            buffer.clear();
+        });
+    });
+    group.finish();
 }
 
 criterion_group!(benches, bench_serialize_1000);

@@ -11,7 +11,7 @@ lain = { path = "../lain" }
 
 # this brings in a LOT of dependencies (like 110)... maybe avoid
 [dev-dependencies.criterion]
-version = "0.2"
+version = "0.8.2"
 # disabling default features brings packages down from 120 to 108 (at the time of writing)
 # wtf man
 default-features = false

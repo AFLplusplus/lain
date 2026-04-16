@@ -440,23 +440,19 @@ mod test {
 
     #[test]
     fn mutating_string() {
-        // TODO: Fix mutation methods
+        let mut my_string = String::from("Hello, world");
+        let mut mutator = get_mutator();
 
-        // let mut my_string = String::from("Hello, world");
-        // let mut mutator = get_mutator();
+        my_string.mutate(&mut mutator, None);
 
-        // my_string.mutate(&mut mutator);
-
-        // assert!(my_string != "Hello, world");
+        assert!(my_string != "Hello, world");
     }
 
     #[test]
     fn string_serialized_size() {
-        // TODO: FIx
+        let my_string = String::from("Hello, world");
 
-        // let my_string = String::from("Hello, world");
-
-        // assert!(my_string.serialized_size() == my_string.as_bytes().len());
+        assert!(my_string.serialized_size() == my_string.as_bytes().len());
     }
 
     #[test]
@@ -468,7 +464,7 @@ mod test {
 
     #[test]
     fn driver_can_reproduce_mutations() {
-        use lain::rand::Rng;
+        use lain::rand::{Rng, RngExt};
         use std::sync::{Arc, RwLock};
 
         #[derive(Debug, Default, NewFuzzed, Mutatable, Clone, PartialEq, BinarySerialize)]
@@ -975,6 +971,35 @@ mod test {
 
             assert_ne!(obj, prev_obj);
         }
+    }
+
+    #[test]
+    fn test_string_mutation_resizes_eventually() {
+        let mut mutator = get_mutator();
+        let mut s = String::from("Hello, world");
+        let original_len = s.len();
+        let mut grew = false;
+        let mut shrank = false;
+
+        // 1% chance per mutation, running 5000 iterations should guarantee hitting both.
+        for _ in 0..5000 {
+            s.mutate(&mut mutator, None);
+            if s.len() > original_len {
+                grew = true;
+            }
+            if s.len() < original_len {
+                shrank = true;
+            }
+            if grew && shrank {
+                break;
+            }
+        }
+
+        assert!(grew, "string never grew in size during aggressive mutation");
+        assert!(
+            shrank,
+            "string never shrank in size during aggressive mutation"
+        );
     }
 
     fn compare_slices(expected: &[u8], actual: &[u8]) {

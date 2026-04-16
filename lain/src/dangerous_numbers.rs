@@ -1,4 +1,4 @@
-use crate::rand::Rng;
+use crate::rand::{Rng, RngExt};
 use crate::traits::*;
 
 static DANGEROUS_NUMBERS_U8: &[u8] = &[
