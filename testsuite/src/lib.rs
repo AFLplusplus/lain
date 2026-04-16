@@ -1,4 +1,10 @@
 #![feature(min_specialization)]
+#![allow(
+    clippy::erasing_op,
+    clippy::identity_op,
+    clippy::assign_op_pattern,
+    dead_code
+)]
 
 extern crate lain;
 
@@ -164,12 +170,12 @@ mod test {
 
         // no assert or anything here since the concern is whether or not
         // the rng had bounds that cause a panic
-        assert!(initialized_struct.bool_field == true || initialized_struct.bool_field == false);
+        let _ = initialized_struct.bool_field;
     }
 
     #[test]
     fn test_ignored_fields() {
-        #[derive(NewFuzzed, BinarySerialize, Clone)]
+        #[derive(NewFuzzed, BinarySerialize, Clone, Mutatable)]
         struct IgnoredFieldsStruct {
             #[lain(ignore)]
             ignored: u8,
@@ -177,9 +183,34 @@ mod test {
 
         let mut mutator = get_mutator();
 
-        let initialized_struct = IgnoredFieldsStruct::new_fuzzed(&mut mutator, None);
+        let mut initialized_struct = IgnoredFieldsStruct::new_fuzzed(&mut mutator, None);
 
         assert_eq!(initialized_struct.ignored, 0);
+
+        initialized_struct.mutate(&mut mutator, None);
+        assert_eq!(initialized_struct.ignored, 0);
+    }
+
+    #[test]
+    fn test_ignored_fields_enum() {
+        #[derive(NewFuzzed, BinarySerialize, Clone, Mutatable, PartialEq, Debug)]
+        enum IgnoredFieldsEnum {
+            Variant1(#[lain(ignore)] u8),
+        }
+
+        let mut mutator = get_mutator();
+
+        let mut initialized_enum = IgnoredFieldsEnum::new_fuzzed(&mut mutator, None);
+
+        match &initialized_enum {
+            IgnoredFieldsEnum::Variant1(ignored) => assert_eq!(*ignored, 0),
+        }
+
+        initialized_enum.mutate(&mut mutator, None);
+
+        match &initialized_enum {
+            IgnoredFieldsEnum::Variant1(ignored) => assert_eq!(*ignored, 0),
+        }
     }
 
     #[test]
@@ -440,23 +471,19 @@ mod test {
 
     #[test]
     fn mutating_string() {
-        // TODO: Fix mutation methods
+        let mut my_string = String::from("Hello, world");
+        let mut mutator = get_mutator();
 
-        // let mut my_string = String::from("Hello, world");
-        // let mut mutator = get_mutator();
+        my_string.mutate(&mut mutator, None);
 
-        // my_string.mutate(&mut mutator);
-
-        // assert!(my_string != "Hello, world");
+        assert!(my_string != "Hello, world");
     }
 
     #[test]
     fn string_serialized_size() {
-        // TODO: FIx
+        let my_string = String::from("Hello, world");
 
-        // let my_string = String::from("Hello, world");
-
-        // assert!(my_string.serialized_size() == my_string.as_bytes().len());
+        assert!(my_string.serialized_size() == my_string.len());
     }
 
     #[test]
@@ -468,7 +495,7 @@ mod test {
 
     #[test]
     fn driver_can_reproduce_mutations() {
-        use lain::rand::Rng;
+        use lain::rand::RngExt;
         use std::sync::{Arc, RwLock};
 
         #[derive(Debug, Default, NewFuzzed, Mutatable, Clone, PartialEq, BinarySerialize)]
@@ -590,6 +617,20 @@ mod test {
 
         ascii_str.mutate(&mut mutator, None);
         println!("{:?}", ascii_str);
+    }
+
+    #[test]
+    fn test_large_array_mutation_support() {
+        #[derive(NewFuzzed, Mutatable, BinarySerialize)]
+        struct StructWithHugeArray {
+            pub huge: [u8; 128],
+        }
+
+        let mut mutator = get_mutator();
+        let mut instance = StructWithHugeArray::new_fuzzed(&mut mutator, None);
+
+        assert_eq!(instance.huge.serialized_size(), 128);
+        instance.mutate(&mut mutator, None);
     }
 
     #[test]
@@ -975,6 +1016,67 @@ mod test {
 
             assert_ne!(obj, prev_obj);
         }
+    }
+
+    #[test]
+    fn test_string_mutation_resizes_eventually() {
+        let mut mutator = get_mutator();
+        let mut s = String::from("Hello, world");
+        let original_len = s.len();
+        let mut grew = false;
+        let mut shrank = false;
+
+        // 1% chance per mutation, running 5000 iterations should guarantee hitting both.
+        for _ in 0..5000 {
+            s.mutate(&mut mutator, None);
+            if s.len() > original_len {
+                grew = true;
+            }
+            if s.len() < original_len {
+                shrank = true;
+            }
+            if grew && shrank {
+                break;
+            }
+        }
+
+        assert!(grew, "string never grew in size during aggressive mutation");
+        assert!(
+            shrank,
+            "string never shrank in size during aggressive mutation"
+        );
+    }
+
+    #[test]
+    fn test_float_behavior() {
+        let mut mutator = get_mutator();
+
+        let mut has_nan = false;
+        let mut has_inf = false;
+        let mut has_neg_inf = false;
+        let mut has_regular = false;
+
+        // 5000 iterations to confidently hit all branches of the new Smart Mode
+        for _ in 0..5000 {
+            let val = f32::new_fuzzed(&mut mutator, None);
+            if val.is_nan() {
+                has_nan = true;
+            } else if val == f32::INFINITY {
+                has_inf = true;
+            } else if val == f32::NEG_INFINITY {
+                has_neg_inf = true;
+            } else if val.is_normal() {
+                has_regular = true;
+            }
+        }
+
+        assert!(has_nan, "Fuzzer failed to generate f32::NAN");
+        assert!(has_inf, "Fuzzer failed to generate f32::INFINITY");
+        assert!(has_neg_inf, "Fuzzer failed to generate f32::NEG_INFINITY");
+        assert!(
+            has_regular,
+            "Fuzzer failed to generate standard normal floats"
+        );
     }
 
     fn compare_slices(expected: &[u8], actual: &[u8]) {

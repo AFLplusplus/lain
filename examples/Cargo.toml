@@ -1,4 +1,2 @@
 [workspace]
-members = [
-	'example_fuzzer',
-]
+members = ['example_fuzzer']

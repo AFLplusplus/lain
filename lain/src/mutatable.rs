@@ -32,6 +32,74 @@ enum VecResizeType {
     Shrink,
 }
 
+/// Performs robust, structural resizing on character sequences.
+/// Supports stochastic splicing, raw element injection, and multi-mode shrinkage.
+fn advanced_resize<T, R: Rng, F>(vec: &mut Vec<T>, mutator: &mut Mutator<R>, mut gen: F)
+where
+    T: Clone,
+    F: FnMut(&mut Mutator<R>) -> T,
+{
+    if vec.is_empty() || mutator.gen_chance(0.5) {
+        // Growing
+        if vec.is_empty() || mutator.gen_chance(0.5) {
+            let grow_by = mutator.random_range(1, 16);
+            for _ in 0..grow_by {
+                vec.push(gen(mutator));
+            }
+        } else {
+            let start = mutator.random_range(0, vec.len());
+            let end = mutator.random_range(start, vec.len() + 1);
+            let chunk = vec[start..end].to_vec();
+            let insert_at = mutator.random_range(0, vec.len() + 1);
+            vec.splice(insert_at..insert_at, chunk);
+        }
+    } else if !vec.is_empty() {
+        // Shrinking
+        if mutator.gen_chance(0.5) {
+            let start = mutator.random_range(0, vec.len());
+            let end = mutator.random_range(start, vec.len() + 1);
+            vec.drain(start..end);
+        } else {
+            let remove_count = mutator.random_range(1, vec.len() + 1);
+            if mutator.gen_chance(0.5) {
+                vec.drain(0..remove_count);
+            } else {
+                vec.truncate(vec.len() - remove_count);
+            }
+        }
+    }
+}
+
+/// Encapsulates entire character fuzzing process for structural string buffers.
+fn mutate_char_vec<T, R: Rng, F>(vec: &mut Vec<T>, mutator: &mut Mutator<R>, mut gen: F)
+where
+    T: Clone,
+    F: FnMut(&mut Mutator<R>) -> T,
+{
+    const CHANCE_TO_RESIZE: f64 = 0.01;
+    const CHANCE_TO_RESIZE_EMPTY: f64 = 0.33;
+
+    let should_resize = if vec.is_empty() {
+        mutator.gen_chance(CHANCE_TO_RESIZE_EMPTY)
+    } else {
+        mutator.gen_chance(CHANCE_TO_RESIZE)
+    };
+
+    if should_resize {
+        advanced_resize(vec, mutator, &mut gen);
+        return;
+    }
+
+    if vec.is_empty() {
+        return;
+    }
+
+    let num_mutations = mutator.random_range(1, vec.len());
+    for idx in index::sample(&mut mutator.rng, vec.len(), num_mutations).iter() {
+        vec[idx] = gen(mutator);
+    }
+}
+
 /// Grows a `Vec`.
 /// This will randomly select to grow by a factor of 1/4, 1/2, 3/4, or a fixed number of bytes
 /// in the range of [1, 8]. Elements may be added randomly to the beginning or end of the the vec
@@ -539,12 +607,7 @@ impl Mutatable for AsciiString {
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
         trace!("performing mutation on an AsciiString");
-
-        // TODO: Implement logic for resizing?
-        let num_mutations = mutator.random_range(1, self.inner.len());
-        for idx in index::sample(&mut mutator.rng, self.inner.len(), num_mutations).iter() {
-            self.inner[idx] = AsciiChar::new_fuzzed(mutator, None);
-        }
+        mutate_char_vec(&mut self.inner, mutator, |m| AsciiChar::new_fuzzed(m, None));
     }
 }
 
@@ -557,12 +620,22 @@ impl Mutatable for Utf8String {
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
         trace!("performing mutation on a Utf8String");
+        mutate_char_vec(&mut self.inner, mutator, |m| Utf8Char::new_fuzzed(m, None));
+    }
+}
 
-        // TODO: Implement logic for resizing?
-        let num_mutations = mutator.random_range(1, self.inner.len());
-        for idx in index::sample(&mut mutator.rng, self.inner.len(), num_mutations).iter() {
-            self.inner[idx] = Utf8Char::new_fuzzed(mutator, None);
-        }
+impl Mutatable for String {
+    type RangeType = usize;
+
+    fn mutate<R: Rng>(
+        &mut self,
+        mutator: &mut Mutator<R>,
+        _constraints: Option<&Constraints<Self::RangeType>>,
+    ) {
+        trace!("performing mutation on a String");
+        let mut chars: Vec<char> = self.chars().collect();
+        mutate_char_vec(&mut chars, mutator, |m| char::new_fuzzed(m, None));
+        *self = chars.into_iter().collect();
     }
 }
 
@@ -643,18 +716,41 @@ impl Mutatable for i64 {
     }
 }
 
-impl<T> Mutatable for [T; 0]
-where
-    T: Mutatable,
-{
-    type RangeType = u8;
+impl Mutatable for f32 {
+    type RangeType = f32;
 
+    #[inline(always)]
     fn mutate<R: Rng>(
         &mut self,
-        _mutator: &mut Mutator<R>,
+        mutator: &mut Mutator<R>,
         _constraints: Option<&Constraints<Self::RangeType>>,
     ) {
-        // nop
+        if mutator.gen_chance(0.01) {
+            *self = f32::select_dangerous_number(&mut mutator.rng);
+            return;
+        }
+        let mut val = self.to_bits();
+        mutator.mutate(&mut val);
+        *self = f32::from_bits(val);
+    }
+}
+
+impl Mutatable for f64 {
+    type RangeType = f64;
+
+    #[inline(always)]
+    fn mutate<R: Rng>(
+        &mut self,
+        mutator: &mut Mutator<R>,
+        _constraints: Option<&Constraints<Self::RangeType>>,
+    ) {
+        if mutator.gen_chance(0.01) {
+            *self = f64::select_dangerous_number(&mut mutator.rng);
+            return;
+        }
+        let mut val = self.to_bits();
+        mutator.mutate(&mut val);
+        *self = f64::from_bits(val);
     }
 }
 
@@ -730,28 +826,20 @@ where
     }
 }
 
-macro_rules! impl_mutatable_array {
-    ( $($size:expr),* ) => {
-        $(
-            impl<T> Mutatable for [T; $size]
-            where
-                T: Mutatable + SerializedSize,
-                T::RangeType: Clone,
-            {
-                type RangeType = T::RangeType;
+impl<T, const SIZE: usize> Mutatable for [T; SIZE]
+where
+    T: Mutatable + SerializedSize,
+    T::RangeType: Clone,
+{
+    type RangeType = T::RangeType;
 
-                #[inline(always)]
-                fn mutate<R: Rng>(&mut self, mutator: &mut Mutator<R>, constraints: Option<&Constraints<Self::RangeType>>) {
-                    // Treat this as a slice
-                    self[..].mutate(mutator, constraints);
-                }
-            }
-        )*
+    #[inline(always)]
+    fn mutate<R: Rng>(
+        &mut self,
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) {
+        // Treat this as a slice
+        self[..].mutate(mutator, constraints);
     }
 }
-
-impl_mutatable_array!(
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-    27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-    51, 52, 53, 54, 55, 56, 57, 58, 59, 60
-);

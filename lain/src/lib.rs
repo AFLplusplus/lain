@@ -4,6 +4,7 @@
 //! Please consider this crate in "beta" and subject to breaking changes for minor version releases for pre-1.0.
 
 #![feature(specialization)]
+#![allow(dead_code, unused_variables, incomplete_features)]
 
 extern crate num;
 extern crate num_derive;
@@ -58,7 +59,7 @@ pub fn hexdump(data: &[u8]) -> String {
         }
     }
 
-    if data.len() % 16 != 0 {
+    if !data.len().is_multiple_of(16) {
         for _i in 0..16 - (data.len() % 16) {
             ret += " ";
         }

@@ -1,0 +1,33 @@
+name: Just CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  just-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy, rustfmt
+
+      - name: Install tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just,taplo
+
+      - name: Run just fmt-check
+        run: just fmt-check
+
+      - name: Run just clippy
+        run: just clippy
+
+      - name: Run just test
+        run: just test

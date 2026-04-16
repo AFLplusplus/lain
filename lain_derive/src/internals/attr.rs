@@ -124,7 +124,7 @@ impl Container {
         self.min_serialized_size
     }
 
-    pub fn lain_path(&self) -> Cow<syn::Path> {
+    pub fn lain_path(&self) -> Cow<'_, syn::Path> {
         Cow::Owned(parse_quote!(_lain))
     }
 }

@@ -318,9 +318,23 @@ fn binary_serialize_enum_visitor(
                 })
                 .collect();
 
-            let match_arm = quote! {
-                #full_ident(#(ref #field_identifiers,)*) => {
-                    #(#field_serializers)*
+            let is_struct = variant.style == crate::internals::ast::Style::Struct;
+            let match_arm = if is_struct {
+                let mut struct_fields = vec![];
+                for (field, ident) in variant.fields.iter().zip(field_identifiers.iter()) {
+                    let member = &field.member;
+                    struct_fields.push(quote! { #member: ref #ident });
+                }
+                quote! {
+                    #full_ident { #(#struct_fields,)* } => {
+                        #(#field_serializers)*
+                    }
+                }
+            } else {
+                quote! {
+                    #full_ident(#(ref #field_identifiers,)*) => {
+                        #(#field_serializers)*
+                    }
                 }
             };
 
@@ -585,9 +599,23 @@ fn serialized_size_enum_visitor(
             match visitor_type {
                 SerializedSizeVisitorType::SerializedSize
                 | SerializedSizeVisitorType::MinEnumVariantSize => {
-                    quote_spanned! { variant.original.span() =>
-                        #full_ident(#(ref #field_identifiers,)*) => {
-                            0 #(+#field_sizes)*
+                    let is_struct = variant.style == crate::internals::ast::Style::Struct;
+                    if is_struct {
+                        let mut struct_fields = vec![];
+                        for (field, ident) in variant.fields.iter().zip(field_identifiers.iter()) {
+                            let member = &field.member;
+                            struct_fields.push(quote! { #member: ref #ident });
+                        }
+                        quote_spanned! { variant.original.span() =>
+                            #full_ident { #(#struct_fields,)* } => {
+                                0 #(+#field_sizes)*
+                            }
+                        }
+                    } else {
+                        quote_spanned! { variant.original.span() =>
+                            #full_ident(#(ref #field_identifiers,)*) => {
+                                0 #(+#field_sizes)*
+                            }
                         }
                     }
                 }

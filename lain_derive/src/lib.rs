@@ -1,5 +1,6 @@
 // required for using the quote!{} macro for large invocations
 #![recursion_limit = "256"]
+#![allow(dead_code)]
 
 extern crate proc_macro;
 extern crate proc_macro2;

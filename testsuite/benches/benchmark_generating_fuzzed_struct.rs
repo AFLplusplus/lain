@@ -1,9 +1,10 @@
-#![feature(specialization)]
+#![allow(incomplete_features)]
 
 extern crate criterion;
 extern crate lain;
 
 use criterion::*;
+use std::hint::black_box;
 
 use lain::prelude::*;
 use lain::rand::SeedableRng;
@@ -49,54 +50,51 @@ fn bench_new_fuzzed_1000(c: &mut Criterion) {
     let struct_size = std::mem::size_of::<NestedStruct>();
     let function_name = format!("bench_new_fuzzed struct of size 0x{:X}", struct_size);
 
-    c.bench(
-        function_name.as_ref(),
-        Benchmark::new("fuzz", move |b| {
-            let mut mutator = Mutator::new(lain::rand::rngs::SmallRng::from_seed([0u8; 32]));
-            b.iter(|| {
-                let s = NestedStruct::new_fuzzed(&mut mutator, None);
-                black_box(s);
-            });
-        })
-        .throughput(Throughput::Bytes(struct_size as u32)),
-    );
+    let mut group = c.benchmark_group(&function_name);
+    group.throughput(Throughput::Bytes(struct_size as u64));
+    group.bench_function("fuzz", |b| {
+        let mut mutator = Mutator::new(lain::rand::rngs::SmallRng::from_seed([0u8; 32]));
+        b.iter(|| {
+            let s = NestedStruct::new_fuzzed(&mut mutator, None);
+            black_box(s);
+        });
+    });
+    group.finish();
 }
 
 fn bench_in_place_mutation(c: &mut Criterion) {
     let struct_size = std::mem::size_of::<NestedStruct>();
     let function_name = format!("bench_in_place_mutation struct of size 0x{:X}", struct_size);
 
-    c.bench(
-        function_name.as_ref(),
-        Benchmark::new("fuzz", move |b| {
-            let mut mutator = Mutator::new(lain::rand::rngs::SmallRng::from_seed([0u8; 32]));
-            let s = NestedStruct::new_fuzzed(&mut mutator, None);
-            b.iter(|| {
-                let mut s = s.clone();
-                let state = mutator.get_corpus_state();
-                s.mutate(&mut mutator, None);
-                black_box(&s);
-                mutator.set_corpus_state(state);
-            });
-        })
-        .throughput(Throughput::Bytes(struct_size as u32)),
-    );
+    let mut group = c.benchmark_group(&function_name);
+    group.throughput(Throughput::Bytes(struct_size as u64));
+    group.bench_function("fuzz", |b| {
+        let mut mutator = Mutator::new(lain::rand::rngs::SmallRng::from_seed([0u8; 32]));
+        let s = NestedStruct::new_fuzzed(&mut mutator, None);
+        b.iter(|| {
+            let mut s = s.clone();
+            let state = mutator.get_corpus_state();
+            s.mutate(&mut mutator, None);
+            black_box(&s);
+            mutator.set_corpus_state(state);
+        });
+    });
+    group.finish();
 }
 
 fn bench_default_1000(c: &mut Criterion) {
     let struct_size = std::mem::size_of::<NestedStruct>();
     let function_name = format!("bench_default_1000 struct of size 0x{:X}", struct_size);
 
-    c.bench(
-        function_name.as_ref(),
-        Benchmark::new("fuzz", move |b| {
-            b.iter(|| {
-                let s = NestedStruct::default();
-                black_box(s);
-            });
-        })
-        .throughput(Throughput::Bytes(struct_size as u32)),
-    );
+    let mut group = c.benchmark_group(&function_name);
+    group.throughput(Throughput::Bytes(struct_size as u64));
+    group.bench_function("fuzz", |b| {
+        b.iter(|| {
+            let s = NestedStruct::default();
+            black_box(s);
+        });
+    });
+    group.finish();
 }
 
 criterion_group!(

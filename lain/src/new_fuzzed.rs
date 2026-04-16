@@ -1,6 +1,6 @@
 use crate::mutator::Mutator;
 
-use crate::rand::Rng;
+use crate::rand::{Rng, RngExt};
 use crate::traits::*;
 use crate::types::*;
 use num_traits::Bounded;
@@ -81,11 +81,11 @@ where
                         min = 0;
                     }
 
-                    if constraints.max.is_some()
-                        && mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX)
-                    {
-                        if let Some(new_max) = constraints.max.unwrap().checked_mul(2) {
-                            max = new_max;
+                    if let Some(current_max) = constraints.max {
+                        if mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX) {
+                            if let Some(new_max) = current_max.checked_mul(2) {
+                                max = new_max;
+                            }
                         }
                     }
                 }
@@ -191,11 +191,11 @@ where
                         min = 0;
                     }
 
-                    if constraints.max.is_some()
-                        && mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX)
-                    {
-                        // we just hope this doesn't overflow.
-                        max = constraints.max.unwrap() * 2;
+                    if let Some(current_max) = constraints.max {
+                        if mutator.gen_chance(crate::mutator::CHANCE_TO_IGNORE_MIN_MAX) {
+                            // we just hope this doesn't overflow.
+                            max = current_max * 2;
+                        }
                     }
                 }
 
@@ -294,46 +294,6 @@ where
     }
 }
 
-// TODO: Uncomment once const generics are more stable
-// impl<T, const SIZE: usize> NewFuzzed for [T; SIZE]
-// where T: NewFuzzed + Clone {
-//     type RangeType = usize;
-
-//     fn new_fuzzed<R: Rng>(mutator: &mut Mutator<R>, constraints: Option<&Constraints<Self::RangeType>>) -> [T; SIZE] {
-//         if constraints.is_some() {
-//             warn!("Constraints passed to new_fuzzed on fixed-size array do nothing");
-//         }
-
-//         let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();
-//         let arr_ptr = output.as_mut_ptr() as *mut T;
-
-//         let mut idx = 0;
-//         let mut element: T = T::new_fuzzed(mutator, None);
-//         while idx < SIZE {
-//             arr_ptr.add(idx).write(element.clone());
-
-//             idx += 1;
-//             if SIZE - idx > 0 {
-//                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
-//                     let repeat_end_idx = mutator.random_range(idx, SIZE);
-//                     while idx < repeat_end_idx {
-//                         arr_ptr.add(idx).write(element.clone());
-//                         idx += 1;
-//                     }
-
-//                     if SIZE - idx > 0 {
-//                         element = T::new_fuzzed(mutator, None);
-//                     }
-//                 } else {
-//                     element = T::new_fuzzed(mutator, None);
-//                 }
-//             }
-//         }
-
-//         unsafe { output.assume_init() }
-//     }
-// }
-
 impl<T, I> NewFuzzed for UnsafeEnum<T, I>
 where
     T: NewFuzzed,
@@ -358,6 +318,68 @@ where
             // complications when I is not a u8...
             UnsafeEnum::Valid(T::new_fuzzed(mutator, None))
         }
+    }
+}
+
+impl NewFuzzed for String {
+    type RangeType = usize;
+
+    fn new_fuzzed<R: Rng>(
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> Self {
+        let min: Self::RangeType;
+        let max: Self::RangeType;
+        let weight: Weighted;
+        let mut output: String;
+
+        trace!(
+            "Generating random String with constraints: {:#?}",
+            constraints
+        );
+
+        // if no min/max were supplied, we'll take a conservative approach
+        match constraints {
+            Some(constraints) => {
+                min = constraints.min.unwrap_or(0);
+                max = constraints.max.unwrap_or(256);
+                weight = constraints.weighted;
+            }
+            None => {
+                min = 0;
+                max = 256;
+                weight = Weighted::None;
+            }
+        }
+
+        let string_length = mutator.gen_weighted_range(min, max, weight);
+
+        output = String::with_capacity(string_length);
+
+        let mut idx = 0;
+        let mut chr = char::new_fuzzed(mutator, None);
+
+        while idx < string_length {
+            output.push(chr);
+
+            idx += 1;
+            if string_length - idx > 0 {
+                if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
+                    let repeat_end_idx = mutator.random_range(idx, string_length);
+                    while idx < repeat_end_idx {
+                        output.push(chr);
+                        idx += 1;
+                    }
+                    if string_length - idx > 0 {
+                        chr = char::new_fuzzed(mutator, None);
+                    }
+                } else {
+                    chr = char::new_fuzzed(mutator, None);
+                }
+            }
+        }
+
+        output
     }
 }
 
@@ -408,9 +430,9 @@ impl NewFuzzed for Utf8String {
             if string_length - idx > 0 {
                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
                     let repeat_end_idx = mutator.random_range(idx, string_length);
-                    while idx < repeat_end_idx {
-                        output.inner.push(chr.clone());
-                        idx += 1;
+                    if repeat_end_idx > idx {
+                        output.inner.resize(repeat_end_idx, chr.clone());
+                        idx = repeat_end_idx;
                     }
                     if string_length - idx > 0 {
                         chr = Utf8Char::new_fuzzed(mutator, None);
@@ -472,9 +494,9 @@ impl NewFuzzed for AsciiString {
             if string_length - idx > 0 {
                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
                     let repeat_end_idx = mutator.random_range(idx, string_length);
-                    while idx < repeat_end_idx {
-                        output.inner.push(chr.clone());
-                        idx += 1;
+                    if repeat_end_idx > idx {
+                        output.inner.resize(repeat_end_idx, chr.clone());
+                        idx = repeat_end_idx;
                     }
                     if string_length - idx > 0 {
                         chr = AsciiChar::new_fuzzed(mutator, None);
@@ -749,91 +771,135 @@ macro_rules! impl_new_fuzzed {
 
 // BUG: f32/f64 generate a number between 0/1 when no constraints are supplied,
 // otherwise they generate an *integer* between min/max.
-impl_new_fuzzed!(u8, i8, u16, i16, u32, i32, u64, i64, f32, f64);
+impl_new_fuzzed!(u8, i8, u16, i16, u32, i32, u64, i64);
 
-impl<T> NewFuzzed for [T; 0]
+// Static safe float boundary limits to prevent division/calc overhead at runtime
+const DEFAULT_F32_MIN: f32 = -1.692947e38;
+const DEFAULT_F32_MAX: f32 = 1.692947e38;
+const DEFAULT_F64_MIN: f64 = -8.94374693961351e307;
+const DEFAULT_F64_MAX: f64 = 8.94374693961351e307;
+
+impl NewFuzzed for f32 {
+    type RangeType = f32;
+
+    #[inline(always)]
+    fn new_fuzzed<R: Rng>(
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> Self {
+        if mutator.gen_chance(0.10) {
+            return f32::select_dangerous_number(&mut mutator.rng);
+        }
+        if let Some(constraints) = constraints {
+            let min = constraints.min.unwrap_or(DEFAULT_F32_MIN);
+            let max = constraints.max.unwrap_or(DEFAULT_F32_MAX);
+            if min >= max {
+                return min;
+            }
+            return mutator.gen_weighted_range(min, max, constraints.weighted);
+        }
+
+        // Unconstrained Smart Mode Strategy
+        let mode = mutator.rng.random_range(0..100);
+        match mode {
+            0..=49 => {
+                // 50%: Float-specific standardized high-fidelity programmatic ranges
+                mutator.gen_weighted_range(-100000.0, 100000.0, Weighted::None)
+            }
+            50..=74 => {
+                // 25%: Unadulterated bitwise float noise (exponents, extreme fractions)
+                f32::from_bits(mutator.rng.random::<u32>())
+            }
+            _ => {
+                // 25%: Pure corner boundaries (1.0, 0.0, -1.0, MIN_POSITIVE)
+                [1.0, 0.0, -1.0, f32::MIN_POSITIVE]
+                    .choose(&mut mutator.rng)
+                    .unwrap()
+                    .to_owned()
+            }
+        }
+    }
+}
+
+impl NewFuzzed for f64 {
+    type RangeType = f64;
+
+    #[inline(always)]
+    fn new_fuzzed<R: Rng>(
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> Self {
+        if mutator.gen_chance(0.10) {
+            return f64::select_dangerous_number(&mut mutator.rng);
+        }
+        if let Some(constraints) = constraints {
+            let min = constraints.min.unwrap_or(DEFAULT_F64_MIN);
+            let max = constraints.max.unwrap_or(DEFAULT_F64_MAX);
+            if min >= max {
+                return min;
+            }
+            return mutator.gen_weighted_range(min, max, constraints.weighted);
+        }
+
+        let mode = mutator.rng.random_range(0..100);
+        match mode {
+            0..=49 => mutator.gen_weighted_range(-100000.0, 100000.0, Weighted::None),
+            50..=74 => f64::from_bits(mutator.rng.random::<u64>()),
+            _ => [1.0, 0.0, -1.0, f64::MIN_POSITIVE]
+                .choose(&mut mutator.rng)
+                .unwrap()
+                .to_owned(),
+        }
+    }
+}
+
+impl<T, const SIZE: usize> NewFuzzed for [T; SIZE]
 where
-    T: NewFuzzed + Clone,
+    T: NewFuzzed + Clone + SerializedSize,
 {
     type RangeType = usize;
 
     fn new_fuzzed<R: Rng>(
-        _mutator: &mut Mutator<R>,
-        _constraints: Option<&Constraints<Self::RangeType>>,
-    ) -> [T; 0] {
-        // no-op
-        []
-    }
-}
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> [T; SIZE] {
+        let per_item_max_size: Option<usize> = constraints.and_then(|c| {
+            c.max_size
+                .as_ref()
+                .map(|size| size.checked_div(SIZE).unwrap_or(0))
+        });
 
-macro_rules! impl_new_fuzzed_array {
-    ( $($size:expr),* ) => {
-        $(
-            impl<T> NewFuzzed for [T; $size]
-            where T: NewFuzzed + Clone + SerializedSize {
-                type RangeType = usize;
+        let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();
+        let arr_ptr = output.as_mut_ptr() as *mut T;
 
-                fn new_fuzzed<R: Rng>(mutator: &mut Mutator<R>, constraints: Option<&Constraints<Self::RangeType>>) -> [T; $size] {
-                    let per_item_max_size: Option<usize> = constraints.and_then(|c| c.max_size.as_ref().and_then(|size| Some(*size / $size)));
+        let constraints = per_item_max_size.as_ref().map(|size| {
+            let mut constraints = Constraints::new();
+            constraints.max_size(*size);
+            constraints.set_base_size_accounted_for();
 
-                    let mut output: MaybeUninit<[T; $size]> = MaybeUninit::uninit();
-                    let arr_ptr = output.as_mut_ptr() as *mut T;
+            constraints
+        });
 
-                    let constraints = per_item_max_size.as_ref().map(|size| {
-                        let mut constraints = Constraints::new();
-                        constraints.max_size(*size);
-                        constraints.set_base_size_accounted_for();
+        let mut idx = 0;
+        if SIZE > 0 {
+            let mut element: T = T::new_fuzzed(mutator, constraints.as_ref());
 
-                        constraints
-                    });
-
-                    let mut idx = 0;
-                    let mut element: T = T::new_fuzzed(mutator, constraints.as_ref());
-
-                    while idx < $size {
-                        unsafe {
-                            arr_ptr.add(idx).write(element.clone());
-                        }
-
-                        idx += 1;
-                        if $size - idx > 0 {
-                            if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
-                                let repeat_end_idx = mutator.random_range(idx, $size);
-                                while idx < repeat_end_idx {
-                                    unsafe {
-                                        arr_ptr.add(idx).write(element.clone());
-                                    }
-                                    idx += 1;
-                                }
-                            } else {
-                                let constraints = per_item_max_size.as_ref().map(|size| {
-                                    let mut constraints = Constraints::new();
-                                    constraints.max_size(*size);
-                                    constraints.set_base_size_accounted_for();
-
-                                    constraints
-                                });
-
-                                element = T::new_fuzzed(mutator, constraints.as_ref());
-                            }
-                        }
-                    }
-
-                    unsafe { output.assume_init() }
+            while idx < SIZE {
+                unsafe {
+                    arr_ptr.add(idx).write(element.clone());
                 }
-            }
 
-            impl<T> NewFuzzed for [T; $size]
-            where T: NewFuzzed + SerializedSize {
-                default type RangeType = usize;
-
-                default fn new_fuzzed<R: Rng>(mutator: &mut Mutator<R>, constraints: Option<&Constraints<Self::RangeType>>) -> [T; $size] {
-                    let per_item_max_size: Option<usize> = constraints.and_then(|c| c.max_size.as_ref().and_then(|size| Some(*size / $size)));
-
-                    let mut output: MaybeUninit<[T; $size]> = MaybeUninit::uninit();
-                    let arr_ptr = output.as_mut_ptr() as *mut T;
-
-                    for i in 0..$size {
+                idx += 1;
+                if SIZE - idx > 0 {
+                    if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
+                        let repeat_end_idx = mutator.random_range(idx, SIZE);
+                        while idx < repeat_end_idx {
+                            unsafe {
+                                arr_ptr.add(idx).write(element.clone());
+                            }
+                            idx += 1;
+                        }
+                    } else {
                         let constraints = per_item_max_size.as_ref().map(|size| {
                             let mut constraints = Constraints::new();
                             constraints.max_size(*size);
@@ -841,25 +907,54 @@ macro_rules! impl_new_fuzzed_array {
 
                             constraints
                         });
-                        let element = T::new_fuzzed(mutator, constraints.as_ref());
 
-                        unsafe {
-                            arr_ptr.offset(i).write(element);
-                        }
+                        element = T::new_fuzzed(mutator, constraints.as_ref());
                     }
-
-                    unsafe { output.assume_init() }
                 }
             }
-        )*
+        }
+
+        unsafe { output.assume_init() }
     }
 }
 
-impl_new_fuzzed_array!(
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-    27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-    51, 52, 53, 54, 55, 56, 57, 58, 59, 60
-);
+impl<T, const SIZE: usize> NewFuzzed for [T; SIZE]
+where
+    T: NewFuzzed + SerializedSize,
+{
+    default type RangeType = usize;
+
+    default fn new_fuzzed<R: Rng>(
+        mutator: &mut Mutator<R>,
+        constraints: Option<&Constraints<Self::RangeType>>,
+    ) -> [T; SIZE] {
+        let per_item_max_size: Option<usize> = constraints.and_then(|c| {
+            c.max_size
+                .as_ref()
+                .map(|size| size.checked_div(SIZE).unwrap_or(0))
+        });
+
+        let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();
+        let arr_ptr = output.as_mut_ptr() as *mut T;
+
+        for i in 0..SIZE {
+            let constraints = per_item_max_size.as_ref().map(|size| {
+                let mut constraints = Constraints::new();
+                constraints.max_size(*size);
+                constraints.set_base_size_accounted_for();
+
+                constraints
+            });
+            let element = T::new_fuzzed(mutator, constraints.as_ref());
+
+            unsafe {
+                arr_ptr.add(i).write(element);
+            }
+        }
+
+        unsafe { output.assume_init() }
+    }
+}
 
 impl NewFuzzed for *mut std::ffi::c_void {
     type RangeType = usize;

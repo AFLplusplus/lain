@@ -9,16 +9,16 @@ keywords.workspace = true
 license.workspace = true
 
 [dependencies]
-rand = { version = "0.9", features = ["small_rng"] }
+rand = { version = "0.10.1" }
 byteorder = "1.5.0"
 paste = "1.0.15"
 lain_derive = { version = "0.5.7", path = "../lain_derive" }
-log = "0.4"
+log = "0.4.29"
 num-traits = "0.2.19"
 num-derive = "0.4.2"
 num = "0.4.3"
 lazy_static = "1.5.0"
-serde = { version = "1.0.217", optional = true, features = ["derive"] }
+serde = { version = "1.0.228", optional = true, features = ["derive"] }
 field-offset = "0.3.6"
 
 [features]
