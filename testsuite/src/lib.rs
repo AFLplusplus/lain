@@ -1,4 +1,10 @@
 #![feature(min_specialization)]
+#![allow(
+    clippy::erasing_op,
+    clippy::identity_op,
+    clippy::assign_op_pattern,
+    dead_code
+)]
 
 extern crate lain;
 
@@ -164,7 +170,7 @@ mod test {
 
         // no assert or anything here since the concern is whether or not
         // the rng had bounds that cause a panic
-        assert!(initialized_struct.bool_field == true || initialized_struct.bool_field == false);
+        let _ = initialized_struct.bool_field;
     }
 
     #[test]
@@ -452,7 +458,7 @@ mod test {
     fn string_serialized_size() {
         let my_string = String::from("Hello, world");
 
-        assert!(my_string.serialized_size() == my_string.as_bytes().len());
+        assert!(my_string.serialized_size() == my_string.len());
     }
 
     #[test]
@@ -464,7 +470,7 @@ mod test {
 
     #[test]
     fn driver_can_reproduce_mutations() {
-        use lain::rand::{Rng, RngExt};
+        use lain::rand::RngExt;
         use std::sync::{Arc, RwLock};
 
         #[derive(Debug, Default, NewFuzzed, Mutatable, Clone, PartialEq, BinarySerialize)]

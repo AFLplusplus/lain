@@ -80,7 +80,10 @@ fn main() {
 
 fn fuzzer_routine<R: Rng>(mutator: &mut Mutator<R>, thread_context: &mut FuzzerThreadContext, _global_context: Option<Arc<RwLock<GlobalContext>>>) -> Result<(), ()> {
     // TODO: we have overhead here of re-estabilishing the connection every time
-    let mut stream = TcpStream::connect("127.0.0.1:8080").expect("server isn't running. possible crash?");
+    let mut stream = match TcpStream::connect("127.0.0.1:8080") {
+        Ok(s) => s,
+        Err(_) => return Err(()),
+    };
 
     let packet = match thread_context.last_packet {
         Some(ref mut last_packet) => {
@@ -88,7 +91,7 @@ fn fuzzer_routine<R: Rng>(mutator: &mut Mutator<R>, thread_context: &mut FuzzerT
             last_packet
         }
         _ => {
-            mutator.begin_new_corpus();
+            mutator.random_flags();
 
             thread_context.last_packet = Some(PacketData::new_fuzzed(mutator, None));
             thread_context.last_packet.as_mut().unwrap()
@@ -100,10 +103,12 @@ fn fuzzer_routine<R: Rng>(mutator: &mut Mutator<R>, thread_context: &mut FuzzerT
 
     println!("Sending packet: {:?}", packet);
 
-    stream.write(&serialized_data).expect("failed to write data");
+    if stream.write(&serialized_data).is_err() {
+        return Err(());
+    }
 
     let mut response_data = Vec::new();
-    stream.read(&mut response_data);
+    let _ = stream.read(&mut response_data);
 
     thread_context.thread_packet_iterations += 1;
 

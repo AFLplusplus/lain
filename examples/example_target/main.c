@@ -84,15 +84,14 @@ int main(int argc, char **argv) {
     switch (datagram->type) {
 case data_read:
       LOG("got a data read packet\n");
-      if (saved_data != NULL && datagram->offset + datagram->length <= saved_data_length) {
-        write(connfd, packet_buffer + datagram->offset, datagram->length);
+      if (saved_data != NULL && datagram->offset + datagram->length >= datagram->offset && datagram->offset + datagram->length <= saved_data_length) {
+        write(connfd, saved_data + datagram->offset, datagram->length);
       }
       break;
 
 case data_write:
       LOG("got a data write packet\n");
-      // NOTE: Who cares about checking the offset? Nobody would ever provide bad data
-      if (saved_data != NULL && datagram->length <= saved_data_length) {
+      if (saved_data != NULL && datagram->offset + datagram->length >= datagram->offset && datagram->offset + datagram->length <= saved_data_length) {
         memcpy(saved_data + datagram->offset, datagram->data, datagram->length);
       }
       break;

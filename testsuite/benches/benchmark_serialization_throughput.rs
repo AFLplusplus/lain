@@ -1,11 +1,11 @@
 #![feature(specialization)]
+#![allow(incomplete_features)]
 
-#[macro_use]
 extern crate criterion;
-#[macro_use]
 extern crate lain;
 
 use criterion::*;
+use std::hint::black_box;
 
 use lain::byteorder::BigEndian;
 use lain::prelude::*;

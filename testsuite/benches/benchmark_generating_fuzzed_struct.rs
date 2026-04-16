@@ -1,9 +1,11 @@
 #![feature(specialization)]
+#![allow(incomplete_features)]
 
 extern crate criterion;
 extern crate lain;
 
 use criterion::*;
+use std::hint::black_box;
 
 use lain::prelude::*;
 use lain::rand::SeedableRng;

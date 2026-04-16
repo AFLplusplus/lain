@@ -217,14 +217,10 @@ fn mutatable_unit_enum_visitor(
 
     let variants = variants
         .iter()
-        .filter_map(|variant| {
-            //if variant.attrs.ignore() {
-            //    None
-            //} else {
+        .map(|variant| {
             let variant_ident = &variant.ident;
             weights.push(variant.attrs.weight().unwrap_or(1));
-            Some(quote! {#cont_ident::#variant_ident})
-            //}
+            quote! {#cont_ident::#variant_ident}
         })
         .collect();
 
@@ -234,11 +230,7 @@ fn mutatable_unit_enum_visitor(
 fn mutatable_enum_visitor(variants: &[Variant], cont_ident: &syn::Ident) -> Vec<TokenStream> {
     let match_arms = variants
         .iter()
-        .filter_map(|variant| {
-            // if variant.attrs.ignore() {
-            //     return None;
-            // }
-
+        .map(|variant| {
             let variant_ident = &variant.ident;
             let full_ident = quote! {#cont_ident::#variant_ident};
             let mut field_identifiers = vec![];
@@ -255,13 +247,11 @@ fn mutatable_enum_visitor(variants: &[Variant], cont_ident: &syn::Ident) -> Vec<
                 })
                 .collect();
 
-            let match_arm = quote! {
+            quote! {
                 #full_ident(#(ref mut #field_identifiers,)*) => {
                     #(#field_mutators)*
                 }
-            };
-
-            Some(match_arm)
+            }
         })
         .collect();
 

@@ -786,7 +786,7 @@ where
         let per_item_max_size: Option<usize> = constraints.and_then(|c| {
             c.max_size
                 .as_ref()
-                .and_then(|size| Some(if SIZE == 0 { 0 } else { *size / SIZE }))
+                .map(|size| if SIZE == 0 { 0 } else { *size / SIZE })
         });
 
         let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();
@@ -851,7 +851,7 @@ where
         let per_item_max_size: Option<usize> = constraints.and_then(|c| {
             c.max_size
                 .as_ref()
-                .and_then(|size| Some(if SIZE == 0 { 0 } else { *size / SIZE }))
+                .map(|size| if SIZE == 0 { 0 } else { *size / SIZE })
         });
 
         let mut output: MaybeUninit<[T; SIZE]> = MaybeUninit::uninit();
