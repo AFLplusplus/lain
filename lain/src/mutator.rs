@@ -163,9 +163,11 @@ impl<R: Rng> Mutator<R> {
         let (bit_indices, _) = potential_bit_indices[0..num_bits as usize]
             .partial_shuffle(&mut self.rng, num_bits as usize);
 
+        let mut mask = 0u64;
         for idx in bit_indices {
-            *num = (*num) ^ num::cast(1u64 << *idx).unwrap()
+            mask |= 1u64 << *idx;
         }
+        *num = (*num) ^ num::cast(mask).unwrap();
     }
 
     /// Perform a simple arithmetic operation on the number (+ or -)

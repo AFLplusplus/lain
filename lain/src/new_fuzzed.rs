@@ -430,9 +430,9 @@ impl NewFuzzed for Utf8String {
             if string_length - idx > 0 {
                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
                     let repeat_end_idx = mutator.random_range(idx, string_length);
-                    while idx < repeat_end_idx {
-                        output.inner.push(chr.clone());
-                        idx += 1;
+                    if repeat_end_idx > idx {
+                        output.inner.resize(repeat_end_idx, chr.clone());
+                        idx = repeat_end_idx;
                     }
                     if string_length - idx > 0 {
                         chr = Utf8Char::new_fuzzed(mutator, None);
@@ -494,9 +494,9 @@ impl NewFuzzed for AsciiString {
             if string_length - idx > 0 {
                 if mutator.gen_chance(crate::mutator::CHANCE_TO_REPEAT_ARRAY_VALUE) {
                     let repeat_end_idx = mutator.random_range(idx, string_length);
-                    while idx < repeat_end_idx {
-                        output.inner.push(chr.clone());
-                        idx += 1;
+                    if repeat_end_idx > idx {
+                        output.inner.resize(repeat_end_idx, chr.clone());
+                        idx = repeat_end_idx;
                     }
                     if string_length - idx > 0 {
                         chr = AsciiChar::new_fuzzed(mutator, None);
