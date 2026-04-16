@@ -1,12 +1,8 @@
 [workspace]
-members = [
-	'testsuite',
-	'lain',
-	'lain_derive',
-]
+members = ['testsuite', 'lain', 'lain_derive']
 
 [workspace.package]
-version = "0.5.7"          
+version = "0.5.7"
 authors = ["Lain Devs", "AFLplusplus"]
 edition = "2018"
 homepage = "https://github.com/AFLplusplus/lain"

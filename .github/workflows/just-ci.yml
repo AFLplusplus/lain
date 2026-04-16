@@ -2,9 +2,9 @@ name: Just CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
 jobs:
   just-test:
@@ -15,9 +15,16 @@ jobs:
 
       - name: Install Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy, rustfmt
 
-      - name: Install just
-        uses: taiki-e/install-action@just
+      - name: Install tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just,taplo
+
+      - name: Run just fmt-check
+        run: just fmt-check
 
       - name: Run just test
         run: just test

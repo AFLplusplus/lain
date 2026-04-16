@@ -9,6 +9,18 @@ default:
 clippy:
     cargo clippy --workspace --all-targets -- -D warnings
 
+# Format codebase (Rust, TOML, YAML, Markdown)
+fmt:
+    cargo fmt --all
+    taplo format
+    npx prettier --write "**/*.yml" "**/*.yaml" "**/*.md"
+
+# Check codebase formatting (Rust, TOML, YAML, Markdown)
+fmt-check:
+    cargo fmt --all -- --check
+    taplo format --check
+    npx prettier --check "**/*.yml" "**/*.yaml" "**/*.md"
+
 # Run unit tests across the workspace
 test-unit:
     cargo test --workspace
