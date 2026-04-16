@@ -1047,6 +1047,38 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_float_behavior() {
+        let mut mutator = get_mutator();
+
+        let mut has_nan = false;
+        let mut has_inf = false;
+        let mut has_neg_inf = false;
+        let mut has_regular = false;
+
+        // 5000 iterations to confidently hit all branches of the new Smart Mode
+        for _ in 0..5000 {
+            let val = f32::new_fuzzed(&mut mutator, None);
+            if val.is_nan() {
+                has_nan = true;
+            } else if val == f32::INFINITY {
+                has_inf = true;
+            } else if val == f32::NEG_INFINITY {
+                has_neg_inf = true;
+            } else if val.is_normal() {
+                has_regular = true;
+            }
+        }
+
+        assert!(has_nan, "Fuzzer failed to generate f32::NAN");
+        assert!(has_inf, "Fuzzer failed to generate f32::INFINITY");
+        assert!(has_neg_inf, "Fuzzer failed to generate f32::NEG_INFINITY");
+        assert!(
+            has_regular,
+            "Fuzzer failed to generate standard normal floats"
+        );
+    }
+
     fn compare_slices(expected: &[u8], actual: &[u8]) {
         assert_eq!(actual.len(), expected.len());
 
