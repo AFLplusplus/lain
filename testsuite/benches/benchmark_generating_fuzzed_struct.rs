@@ -1,4 +1,3 @@
-#![feature(specialization)]
 #![allow(incomplete_features)]
 
 extern crate criterion;

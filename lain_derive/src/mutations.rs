@@ -233,6 +233,7 @@ fn mutatable_enum_visitor(variants: &[Variant], cont_ident: &syn::Ident) -> Vec<
         .map(|variant| {
             let variant_ident = &variant.ident;
             let full_ident = quote! {#cont_ident::#variant_ident};
+            let is_struct = variant.style == crate::internals::ast::Style::Struct;
             let mut field_identifiers = vec![];
 
             let field_mutators: Vec<TokenStream> = variant
@@ -241,7 +242,13 @@ fn mutatable_enum_visitor(variants: &[Variant], cont_ident: &syn::Ident) -> Vec<
                 .map(|field| {
                     let (value_ident, _field_ident_string, initializer) =
                         field_mutator(field, "__field", true);
-                    field_identifiers.push(quote_spanned! { field.member.span() => #value_ident });
+
+                    if is_struct {
+                        let member = &field.member;
+                        field_identifiers.push(quote_spanned! { field.original.span() => #member: ref mut #value_ident });
+                    } else {
+                        field_identifiers.push(quote_spanned! { field.original.span() => ref mut #value_ident });
+                    }
 
                     if field.attrs.ignore() {
                         TokenStream::new()
@@ -251,9 +258,17 @@ fn mutatable_enum_visitor(variants: &[Variant], cont_ident: &syn::Ident) -> Vec<
                 })
                 .collect();
 
-            quote! {
-                #full_ident(#(ref mut #field_identifiers,)*) => {
-                    #(#field_mutators)*
+            if is_struct {
+                quote! {
+                    #full_ident { #(#field_identifiers,)* } => {
+                        #(#field_mutators)*
+                    }
+                }
+            } else {
+                quote! {
+                    #full_ident(#(#field_identifiers,)*) => {
+                        #(#field_mutators)*
+                    }
                 }
             }
         })
@@ -758,9 +773,22 @@ fn new_fuzzed_enum_visitor(
             // using the same code for both code paths generates an error
             // when mixing enum variants with and without fields because
             // of the function call syntax
+            let is_struct = variant.style == crate::internals::ast::Style::Struct;
             let initializer = if field_initializers.is_empty() {
                 quote! {
                     let mut value = #full_ident;
+                }
+            } else if is_struct {
+                let mut struct_fields = vec![];
+                for (field, ident) in variant.fields.iter().zip(field_identifiers.iter()) {
+                    let member = &field.member;
+                    struct_fields.push(quote! { #member: #ident });
+                }
+                quote! {
+                    #(#field_initializers)*
+
+                    _lain::log::trace!("Initializing {}", #full_ident_string);
+                    let mut value = #full_ident { #(#struct_fields,)* };
                 }
             } else {
                 quote! {
