@@ -208,7 +208,7 @@ impl<R: Rng> Mutator<R> {
         if min >= max {
             panic!("cannot gen number where min ({}) >= max ({})", min, max);
         }
-        trace!("generating number between {} and {}", &min, &max);
+        trace!("generating number between {} and {}", min, max);
         let num = self.rng.random_range(min..max);
         trace!("got {}", num);
 
@@ -246,8 +246,8 @@ impl<R: Rng> Mutator<R> {
 
         trace!(
             "generating weighted number between {} and {} with weight towards {:?}",
-            &min,
-            &max,
+            min,
+            max,
             weighted
         );
 

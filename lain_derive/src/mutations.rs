@@ -26,7 +26,6 @@ pub fn expand_mutatable(input: &syn::DeriveInput) -> Result<TokenStream, Vec<syn
     let ident_str = ident.to_string();
 
     let impl_block = quote! {
-        #[allow(clippy)]
         #[allow(unknown_lints)]
         #[automatically_derived]
         impl #impl_generics #lain::traits::Mutatable for #ident #ty_generics #where_clause {
@@ -71,7 +70,6 @@ pub fn expand_new_fuzzed(input: &syn::DeriveInput) -> Result<TokenStream, Vec<sy
     let lain = cont.attrs.lain_path();
 
     let impl_block = quote! {
-        #[allow(clippy)]
         #[allow(unknown_lints)]
         #[automatically_derived]
         impl #impl_generics #lain::traits::NewFuzzed for #ident #ty_generics #where_clause {
@@ -501,11 +499,8 @@ fn struct_field_constraints(field: &Field, for_mutation: bool) -> TokenStream {
 
         if let Some(bits) = attrs.bits() {
             // TODO: maybe refactor attributes so that they can retain original span
-            let bitfield_max = syn::LitInt::new(
-                2_u64.pow(bits as u32),
-                syn::IntSuffix::None,
-                Span::call_site(),
-            );
+            let bitfield_max =
+                syn::LitInt::new(&2_u64.pow(bits as u32).to_string(), Span::call_site());
             max = quote! {Some(#bitfield_max)};
             min = quote! {Some(0)};
         } else {

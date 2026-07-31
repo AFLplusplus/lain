@@ -9,11 +9,12 @@ keywords.workspace = true
 license.workspace = true
 
 [dependencies]
-syn = { version = "0.15", features = ["extra-traits"] }
-quote = "0.6"
-proc-macro2 = "0.4"
+syn = { version = "3.0", features = ["extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
 byteorder = "1.5.0"
-log = "0.4.29"
+log = "0.4.33"
+
 
 [lib]
 proc-macro = true

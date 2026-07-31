@@ -1,13 +1,11 @@
-#![feature(specialization)]
+#![feature(min_specialization)]
 
-extern crate lain;
 extern crate ctrlc;
+extern crate lain;
 
+use lain::driver::*;
 use lain::prelude::*;
 use lain::rand::Rng;
-// the driver is optional -- you can figure out how to manage
-// your fuzzer's threads
-use lain::driver::*;
 
 use std::io::prelude::*;
 use std::net::TcpStream;
@@ -18,7 +16,6 @@ const THREAD_COUNT: usize = 10;
 #[derive(Default)]
 struct FuzzerThreadContext {
     last_packet: Option<PacketData>,
-    scratch_packet: PacketData,
     thread_packet_iterations: usize,
 }
 
@@ -40,23 +37,18 @@ struct PacketData {
 }
 
 impl Fixup for PacketData {
-    fn fixup<R: Rng>(&mut self, mutator: &mut Mutator<R>) {
+    fn fixup<R: Rng>(&mut self, _mutator: &mut Mutator<R>) {
         self.length = self.data.len() as u64;
     }
 }
 
-#[derive(Debug, Copy, Clone, FuzzerObject, ToPrimitiveU32, BinarySerialize)]
+#[derive(Debug, Copy, Clone, FuzzerObject, ToPrimitiveU32, BinarySerialize, Default)]
 #[repr(u32)]
 enum PacketType {
+    #[default]
     Read = 0x0,
     Write = 0x1,
     Reset = 0x2,
-}
-
-impl Default for PacketType {
-    fn default() -> Self {
-        PacketType::Read
-    }
 }
 
 fn main() {

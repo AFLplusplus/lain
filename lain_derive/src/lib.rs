@@ -237,8 +237,8 @@ fn variable_size_object_helper(input: &DeriveInput) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     quote! {
-        #[allow(clippy)]
         #[allow(unknown_lints)]
+        #[automatically_derived]
         impl #impl_generics ::lain::traits::VariableSizeObject for #name #ty_generics #where_clause {
             fn is_variable_size() -> bool {
                 #imp
@@ -299,8 +299,8 @@ fn to_primitive_of_type(
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = quote! {
-        #[allow(clippy)]
         #[allow(unknown_lints)]
+        #[automatically_derived]
         impl #impl_generics ::lain::traits::ToPrimitive for #name #ty_generics #where_clause {
             type Output = #ty;
 

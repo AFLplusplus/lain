@@ -1,7 +1,6 @@
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use std::str::FromStr;
-use syn::export::quote::ToTokens;
 use syn::spanned::Spanned;
 
 use crate::dummy;
@@ -52,7 +51,6 @@ pub fn expand_binary_serialize(input: &syn::DeriveInput) -> Result<TokenStream, 
     let lain = cont.attrs.lain_path();
 
     let impl_block = quote! {
-        #[allow(clippy)]
         #[allow(unknown_lints)]
         #[automatically_derived]
         impl #impl_generics #lain::traits::BinarySerialize for #ident #ty_generics #where_clause {
@@ -79,7 +77,6 @@ pub fn expand_binary_serialize(input: &syn::DeriveInput) -> Result<TokenStream, 
         }
 
         // TODO: Split this into its own derive
-        #[allow(clippy)]
         #[allow(unknown_lints)]
         #[automatically_derived]
         impl #impl_generics #lain::traits::SerializedSize for #ident #ty_generics #where_clause {
@@ -254,7 +251,7 @@ fn field_serializer(
         } else if is_primitive_type(bitfield_type, "u64") {
             64
         } else {
-            panic!("got to field_serialize with an unsupported bitfield type `{}`. ensure that checks in ast code are correct", bitfield_type.into_token_stream());
+            panic!("got to field_serialize with an unsupported bitfield type `{}`. ensure that checks in ast code are correct", bitfield_type.to_token_stream());
         };
 
         let bitfield_value = if field.attrs.bitfield_type().is_some() {
@@ -484,7 +481,7 @@ fn field_serialized_size(
         } else if is_primitive_type(bitfield_type, "u64") {
             64
         } else {
-            panic!("got to field_serialize_size with an unsupported bitfield type `{}`. ensure that checks in ast code are correct", bitfield_type.into_token_stream());
+            panic!("got to field_serialize_size with an unsupported bitfield type `{}`. ensure that checks in ast code are correct", bitfield_type.to_token_stream());
         };
 
         let bitfield_value = if field.attrs.bitfield_type().is_some() {
@@ -521,7 +518,11 @@ fn field_serialized_size(
                     if p.path.segments[0].ident == "Vec" && field.attrs.min().is_some() =>
                 {
                     let min = field.attrs.min().unwrap();
-                    quote_spanned! { field.original.span() => <#ty>::min_nonzero_elements_size() * #min }
+                    if min.to_string() == "0" {
+                        quote_spanned! { field.original.span() => 0usize }
+                    } else {
+                        quote_spanned! { field.original.span() => <#ty>::min_nonzero_elements_size() * #min }
+                    }
                 }
                 _ => {
                     quote_spanned! { field.original.span() => (<#ty>::min_nonzero_elements_size() ) }

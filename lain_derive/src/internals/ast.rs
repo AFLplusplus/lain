@@ -136,21 +136,19 @@ fn fields_from_ast<'a>(cx: &Ctxt, fields: &'a Punctuated<syn::Field, Token![,]>)
             field.attrs.set_bit_shift(bitfield_bits);
             bitfield_bits += bits;
 
-            let bits_in_type: usize;
-
             let bitfield_type = field.attrs.bitfield_type().unwrap_or(field.ty);
-            if is_primitive_type(bitfield_type, "u8") {
-                bits_in_type = 8
+            let bits_in_type: usize = if is_primitive_type(bitfield_type, "u8") {
+                8
             } else if is_primitive_type(bitfield_type, "u16") {
-                bits_in_type = 16
+                16
             } else if is_primitive_type(bitfield_type, "u32") {
-                bits_in_type = 32
+                32
             } else if is_primitive_type(bitfield_type, "u64") {
-                bits_in_type = 64
+                64
             } else {
                 cx.error_spanned_by(field.ty, "Unsupported bitfield datatype. Did you forget to specify `#[lain(bitfield_type = \"...\")]`?");
                 return field;
-            }
+            };
 
             if bitfield_bits == bits_in_type {
                 bitfield_bits = 0;
