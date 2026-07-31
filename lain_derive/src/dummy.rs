@@ -13,7 +13,7 @@ pub fn wrap_in_const(_trait_: &str, _ty: &Ident, code: TokenStream) -> TokenStre
     };
 
     quote! {
-        #[allow(clippy)]
+        #[allow(clippy::all)]
         #[allow(unknown_lints)]
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
         const #dummy_const: () = {

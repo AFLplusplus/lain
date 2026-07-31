@@ -8,6 +8,7 @@ default:
 # Check code formatting and lints
 clippy:
     cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D warnings
 
 # Format codebase (Rust, TOML, YAML, Markdown, Justfile)
 fmt:
